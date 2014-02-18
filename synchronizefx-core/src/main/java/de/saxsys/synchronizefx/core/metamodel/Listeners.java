@@ -41,6 +41,7 @@ import javafx.collections.SetChangeListener;
 import javafx.collections.WeakListChangeListener;
 import javafx.collections.WeakMapChangeListener;
 import javafx.collections.WeakSetChangeListener;
+
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.ModelWalkingSynchronizer.ActionType;
 
@@ -52,7 +53,7 @@ import org.slf4j.LoggerFactory;
  * properties the listener is registered on.
  * 
  */
-class Listeners implements ChangeListener<Object>, ListChangeListener<Object>, SetChangeListener<Object>,
+public class Listeners implements ChangeListener<Object>, ListChangeListener<Object>, SetChangeListener<Object>,
         MapChangeListener<Object, Object> {
 
     private static final Logger LOG = LoggerFactory.getLogger(Listeners.class);

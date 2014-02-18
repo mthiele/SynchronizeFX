@@ -43,6 +43,11 @@ import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromMap;
 import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromSet;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetRootElement;
+import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedModelChangeExecutor;
+import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedObservableObjectRegistry;
+import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedPropertyChangeNotificationDisabler;
+import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedPropertyRegistry;
+import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.SetPropertyValueExecutor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +62,15 @@ public class CommandListExecutor {
 
     private final MetaModel parent;
     private final Listeners listeners;
+    
+    private final PropertyRegistry propertyRegistry;
+    private final ObservableObjectRegistry observableObjectRegistry;
+    private final PropertyValueMapper propertyValueMapper;
+    private final PropertyChangeNotificationDisabler propertyChangeNotificationDisabler;
+    private final ModelChangeExecutor modelChangeExecutor;
+    
+    private final SetPropertyValueExecutor setPropertyValueExecutor;
+    
     /**
      * A set that holds hard references to objects that would otherwise only have weak references and thus could get
      * garbage collected before they are used.
@@ -67,6 +81,7 @@ public class CommandListExecutor {
 
     private final TopologyLayerCallback topology;
 
+
     /**
      * Initializes the executor.
      * 
@@ -74,10 +89,20 @@ public class CommandListExecutor {
      * @param listeners The listeners that should be registered on new properties.
      * @param topology The user callback that should be used to report errors.
      */
-    public CommandListExecutor(final MetaModel parent, final Listeners listeners, final TopologyLayerCallback topology) {
+    public CommandListExecutor(final MetaModel parent, final Listeners listeners,
+            final TopologyLayerCallback topology) {
         this.topology = topology;
         this.parent = parent;
         this.listeners = listeners;
+
+        this.propertyRegistry = new MetaModelBasedPropertyRegistry(parent);
+        this.observableObjectRegistry = new MetaModelBasedObservableObjectRegistry(parent);
+        this.propertyValueMapper = new RegistryBasedPropertyValueMapper(observableObjectRegistry, topology);
+        this.propertyChangeNotificationDisabler = new MetaModelBasedPropertyChangeNotificationDisabler(listeners);
+        this.modelChangeExecutor = new MetaModelBasedModelChangeExecutor(parent);
+        this.setPropertyValueExecutor = new SetPropertyValueExecutor(propertyRegistry, propertyValueMapper,
+                propertyChangeNotificationDisabler, modelChangeExecutor, topology);
+        
         if (LOG.isTraceEnabled()) {
             propFieldMap = new HashMap<>();
         }
@@ -91,7 +116,7 @@ public class CommandListExecutor {
         if (command instanceof CreateObservableObject) {
             execute((CreateObservableObject) command);
         } else if (command instanceof SetPropertyValue) {
-            execute((SetPropertyValue) command);
+            setPropertyValueExecutor.apply((SetPropertyValue) command);
         } else if (command instanceof AddToList) {
             execute((AddToList) command);
         } else if (command instanceof RemoveFromList) {
@@ -162,51 +187,6 @@ public class CommandListExecutor {
 
         hardReferences.put(obj, null);
         parent.registerObject(obj, command.getObjectId());
-    }
-
-    private void execute(final SetPropertyValue command) {
-        @SuppressWarnings("unchecked")
-        final Property<Object> prop = (Property<Object>) parent.getById(command.getPropertyId());
-        if (prop == null) {
-            topology.onError(new SynchronizeFXException("SetPropertyValue with unknown property id recived. "
-                    + command.getPropertyId()));
-            return;
-        }
-        if (LOG.isTraceEnabled()) {
-            final Field field = propFieldMap.get(prop);
-            if (field != null) {
-                LOG.trace("Set on field " + field + " value " + command);
-            } else {
-                LOG.trace(command.toString());
-            }
-        }
-        final Object value;
-        final UUID valueId = command.getObservableObjectId();
-        if (valueId != null) {
-            value = parent.getById(valueId);
-            if (value == null) {
-                topology.onError(new SynchronizeFXException(
-                        "SetPropertyValue command with unknown value object id recived. "
-                                + command.getObservableObjectId()));
-                return;
-            }
-        } else {
-            value = command.getSimpleObjectValue();
-        }
-
-        final Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                listeners.disableFor(prop);
-                prop.setValue(value);
-                listeners.enableFor(prop);
-            }
-        };
-        if (parent.isDoChangesInJavaFxThread()) {
-            Platform.runLater(runnable);
-        } else {
-            runnable.run();
-        }
     }
 
     private void execute(final AddToList command) {

@@ -34,12 +34,12 @@ import java.util.NoSuchElementException;
  * @param <T>
  *            The type that may is present or not
  */
-final class Optional<T> {
+public final class Optional<T> {
 
     private final T value;
 
     private Optional(final T value) {
-        this.value = null;
+        this.value = value;
     }
 
     /**

@@ -34,7 +34,6 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.MapProperty;
 import javafx.beans.property.Property;
 import javafx.beans.property.SetProperty;
-
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.commands.AddToList;
 import de.saxsys.synchronizefx.core.metamodel.commands.AddToSet;
@@ -46,6 +45,7 @@ import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromMap;
 import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromSet;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetRootElement;
+import de.saxsys.synchronizefx.core.metamodel.commands.Value;
 
 /**
  * Creates various types of commands that describe changes on the domain model.
@@ -241,12 +241,14 @@ class CommandListCreator {
         SetPropertyValue msg = new SetPropertyValue();
         msg.setPropertyId(propertyId);
 
+        Value valueMsg = new Value();
         boolean isObservableObject = createObservableObject(value, state);
         if (isObservableObject) {
-            msg.setObservableObjectId(parent.getId(value));
+            valueMsg.setObservableObjectId(parent.getId(value));
         } else {
-            msg.setSimpleObjectValue(value);
+            valueMsg.setSimpleObjectValue(value);
         }
+        msg.setValue(valueMsg);
 
         state.commands.add(msg);
     }
