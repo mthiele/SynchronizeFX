@@ -22,21 +22,34 @@ package de.saxsys.synchronizefx.core.metamodel.commands.builders;
 import java.util.UUID;
 
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
+import de.saxsys.synchronizefx.core.metamodel.commands.Value;
 
 /**
  * Builds a {@link SetPropertyValue} message with dummy data for unset fields.
  */
 public class SetPropertyValueBuilder {
-    
+
     private final SetPropertyValue message = new SetPropertyValue();
 
     /**
      * @see SetPropertyValue#getPropertyId()
-     * @param propertyId the id
+     * @param propertyId
+     *            the id
      * @return this builder
      */
     public SetPropertyValueBuilder propertyId(final UUID propertyId) {
         message.setPropertyId(propertyId);
+        return this;
+    }
+
+    /**
+     * @see SetPropertyValue#getValue()
+     * @param value
+     *            the value
+     * @return this builder
+     */
+    public SetPropertyValueBuilder value(final Value value) {
+        message.setValue(value);
         return this;
     }
 

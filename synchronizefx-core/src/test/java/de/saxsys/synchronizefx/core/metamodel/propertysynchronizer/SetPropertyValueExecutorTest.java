@@ -27,12 +27,17 @@ import de.saxsys.synchronizefx.core.metamodel.Optional;
 import de.saxsys.synchronizefx.core.metamodel.Property;
 import de.saxsys.synchronizefx.core.metamodel.PropertyChangeNotificationDisabler;
 import de.saxsys.synchronizefx.core.metamodel.PropertyRegistry;
+import de.saxsys.synchronizefx.core.metamodel.PropertyValue;
 import de.saxsys.synchronizefx.core.metamodel.PropertyValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.TopologyLayerCallback;
+import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
+import de.saxsys.synchronizefx.core.metamodel.commands.Value;
 import de.saxsys.synchronizefx.core.metamodel.commands.builders.SetPropertyValueBuilder;
+import de.saxsys.synchronizefx.core.metamodel.commands.builders.ValueBuilder;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.InOrder;
 
 import static org.mockito.Mockito.*;
 
@@ -40,30 +45,77 @@ import static org.mockito.Mockito.*;
  * Tests if {@link SetPropertyValueExecutor} works as expected.
  */
 public class SetPropertyValueExecutorTest {
-    
+
+    private static final UUID KNOWN_PROPERTY = UUID.randomUUID();
     private static final UUID UNKNOWN_PROPERTY = UUID.randomUUID();
+    private static final Object NEW_VALUE = "new value";
 
-    private PropertyRegistry propertyRegistry;
-    private PropertyValueMapper propertyValueMapper;
-    private PropertyChangeNotificationDisabler notificationDisabler;
-    private ModelChangeExecutor changeExecutor;
-    private TopologyLayerCallback topology;
+    private final PropertyRegistry propertyRegistry = mock(PropertyRegistry.class);
+    private final PropertyValueMapper propertyValueMapper = mock(PropertyValueMapper.class);
+    private final PropertyChangeNotificationDisabler notificationDisabler
+        = mock(PropertyChangeNotificationDisabler.class);
+    private final DelayedgModelChangeExecutor modelChangeExecutor = new DelayedgModelChangeExecutor();
+    private final TopologyLayerCallback topology = mock(TopologyLayerCallback.class);
 
-    private SetPropertyValueExecutor executor;
+    private final SetPropertyValueExecutor commandExecutor = new SetPropertyValueExecutor(propertyRegistry,
+            propertyValueMapper, notificationDisabler, modelChangeExecutor, topology);
+
+    private Property propertyToChange;
+    private PropertyValue newPropertyValue;
+    private SetPropertyValue changePropertyValueCommand;
 
     /**
-     * Sets up the class under test.
+     * Sets up the test data used in tests.
      */
     @Before
-    public void setUp() {
-        this.propertyRegistry = mock(PropertyRegistry.class);
-        this.propertyValueMapper = mock(PropertyValueMapper.class);
-        this.notificationDisabler = mock(PropertyChangeNotificationDisabler.class);
-        this.changeExecutor = mock(ModelChangeExecutor.class);
-        this.topology = mock(TopologyLayerCallback.class);
+    public void setUpTestData() {
+        propertyToChange = mock(Property.class);
+        when(propertyRegistry.getById(KNOWN_PROPERTY)).thenReturn(Optional.of(propertyToChange));
 
-        this.executor = new SetPropertyValueExecutor(propertyRegistry, propertyValueMapper, notificationDisabler,
-                changeExecutor, topology);
+        newPropertyValue = mock(PropertyValue.class);
+        Value newValue = new ValueBuilder().simpleObjectValue(NEW_VALUE).build();
+        when(propertyValueMapper.map(newValue)).thenReturn(newPropertyValue);
+
+        changePropertyValueCommand = new SetPropertyValueBuilder().propertyId(KNOWN_PROPERTY).value(newValue).build();
+    }
+
+    /**
+     * The executor should change the value of a {@link Property} according to the contents of the command it executes.
+     */
+    @Test
+    public void shouldChangeTheValueOfAProperty() {
+        commandExecutor.apply(changePropertyValueCommand);
+
+        modelChangeExecutor.executeLast();
+
+        verify(propertyToChange).setValue(newPropertyValue);
+    }
+
+    /**
+     * All changes to the domain model of the user must be done via the {@link ModelChangeExecutor}.
+     */
+    @Test
+    public void shouldModifyThePropertyOnlyViaTheModelChangeExecutor() {
+        commandExecutor.apply(changePropertyValueCommand);
+
+        // if the ModelChangeExecutor does not execute the changes, the users domain model should remain unchanged.
+        verifyNoMoreInteractions(propertyToChange);
+    }
+
+    /**
+     * The change to the domain model should not be propagated to the synchronizeFX specific listeners that generate
+     * change commands.
+     */
+    @Test
+    public void shouldDisableAndReanableChangeNotificationWhenChangingThePropertyValue() {
+        commandExecutor.apply(changePropertyValueCommand);
+        modelChangeExecutor.executeLast();
+
+        InOrder inOrder = inOrder(notificationDisabler, propertyToChange);
+
+        inOrder.verify(notificationDisabler).disableFor(propertyToChange);
+        inOrder.verify(propertyToChange).setValue(any(PropertyValue.class));
+        inOrder.verify(notificationDisabler).enableFor(propertyToChange);
     }
 
     /**
@@ -72,10 +124,30 @@ public class SetPropertyValueExecutorTest {
      */
     @Test
     public void shouldFailForMessageWithUnknownPropertyId() {
-        when(propertyRegistry.getById(UNKNOWN_PROPERTY)).thenReturn(Optional.<Property>empty());
-        
-        executor.apply(new SetPropertyValueBuilder().propertyId(UNKNOWN_PROPERTY).build());
-        
+        when(propertyRegistry.getById(UNKNOWN_PROPERTY)).thenReturn(Optional.<Property> empty());
+
+        commandExecutor.apply(new SetPropertyValueBuilder().propertyId(UNKNOWN_PROPERTY).build());
+
         verify(topology).onError(any(SynchronizeFXException.class));
+    }
+
+    /**
+     * Stores the last {@link Runnable} that was passed and executes when required.
+     */
+    private static class DelayedgModelChangeExecutor implements ModelChangeExecutor {
+
+        private Runnable runnable;
+
+        @Override
+        public void execute(final Runnable runnable) {
+            this.runnable = runnable;
+        }
+
+        /**
+         * Executes the last {@link Runnable} that was passed to {@link #execute(Runnable)}.
+         */
+        public void executeLast() {
+            runnable.run();
+        }
     }
 }
