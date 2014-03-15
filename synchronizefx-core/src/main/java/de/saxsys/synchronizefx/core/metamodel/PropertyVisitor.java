@@ -46,11 +46,12 @@ import javafx.beans.property.SetProperty;
  * 
  * Parents are visited before their childs.
  */
-abstract class PropertyVisitor {
+public abstract class PropertyVisitor {
     /**
      * All class names of classes that are known to have no property fields and hence are treated as simple objects.
      */
     private static Set<Class<?>> simpleObjects = Collections.synchronizedSet(new HashSet<Class<?>>());
+    private static Set<Class<?>> observableObjects = Collections.synchronizedSet(new HashSet<Class<?>>());
 
     private final Map<Object, Object> alreadyVisited = new IdentityHashMap<>();
     private Field currentField;
@@ -61,10 +62,12 @@ abstract class PropertyVisitor {
     /**
      * Starts the visiting of an object.
      * 
-     * @param object The object that's {@link Property} fields should be visited.
-     * @throws SecurityException If a {@link SecurityManager} is active and denies access to fields via reflection.
-     * @throws IllegalAccessException If access modifiers like {@code private} are enforced even when the model is
-     *             accessed via reflection.
+     * @param object
+     *            The object that's {@link Property} fields should be visited.
+     * @throws SecurityException
+     *             If a {@link SecurityManager} is active and denies access to fields via reflection.
+     * @throws IllegalAccessException
+     *             If access modifiers like {@code private} are enforced even when the model is accessed via reflection.
      */
     PropertyVisitor(final Object object) throws IllegalAccessException, SecurityException {
         parent.push(new Parent(null, null, null, null));
@@ -94,7 +97,8 @@ abstract class PropertyVisitor {
     /**
      * Called when a simple object is visited. This is a object without any {@link Property} fields.
      * 
-     * @param object The simple object visited.
+     * @param object
+     *            The simple object visited.
      */
     protected void visitSimpleObject(final Object object) {
         // Does nothing by default.
@@ -103,7 +107,8 @@ abstract class PropertyVisitor {
     /**
      * Visit a field of type {@link ListProperty}.
      * 
-     * @param fieldValue The value that is bound to the field.
+     * @param fieldValue
+     *            The value that is bound to the field.
      * @return {@code true} if the childs of this property should be visited, {@code false} if not.
      */
     protected abstract boolean visitCollectionProperty(ListProperty<?> fieldValue);
@@ -111,7 +116,8 @@ abstract class PropertyVisitor {
     /**
      * Visit a field of type {@link MapProperty}.
      * 
-     * @param fieldValue The value that is bound to the field.
+     * @param fieldValue
+     *            The value that is bound to the field.
      * @return {@code true} if the childs of this property should be visited, {@code false} if not.
      */
     protected abstract boolean visitCollectionProperty(MapProperty<?, ?> fieldValue);
@@ -119,7 +125,8 @@ abstract class PropertyVisitor {
     /**
      * Visit a field of type {@link SetProperty}.
      * 
-     * @param fieldValue The value that is bound to the field.
+     * @param fieldValue
+     *            The value that is bound to the field.
      * @return {@code true} if the childs of this property should be visited, {@code false} if not.
      */
     protected abstract boolean visitCollectionProperty(SetProperty<?> fieldValue);
@@ -129,7 +136,8 @@ abstract class PropertyVisitor {
      * 
      * That means that this method doesn't visit {@link ListProperty}s, {@link SetProperty}s and {@link MapProperty}s.
      * 
-     * @param fieldValue The value that is bound to the field.
+     * @param fieldValue
+     *            The value that is bound to the field.
      * @return {@code true} if the childs of this property should be visited, {@code false} if not.
      */
     protected abstract boolean visitSingleValueProperty(Property<?> fieldValue);
@@ -185,7 +193,7 @@ abstract class PropertyVisitor {
         if (object == null) {
             return;
         }
-        if (simpleObjects.contains(object.getClass())) {
+        if (!isObservableObject(object.getClass())) {
             visitSimpleObject(object);
             return;
         }
@@ -200,17 +208,18 @@ abstract class PropertyVisitor {
             stopVisiting();
         } else {
             visitSimpleObject(object);
-            simpleObjects.add(object.getClass());
         }
     }
 
     /**
      * 
-     * @param object The object which fields should be visited.
+     * @param object
+     *            The object which fields should be visited.
      * @return {@code true} when the object was a observable object, {@code false} when it was a simple object.
-     * @throws SecurityException If a {@link SecurityManager} is active and denies access to fields via reflection.
-     * @throws IllegalAccessException If access modifiers like {@code private} are enforced even when the model is
-     *             accessed via reflection.
+     * @throws SecurityException
+     *             If a {@link SecurityManager} is active and denies access to fields via reflection.
+     * @throws IllegalAccessException
+     *             If access modifiers like {@code private} are enforced even when the model is accessed via reflection.
      */
     private boolean visitFields(final Object object) throws IllegalAccessException {
         boolean isObservableObject = false;
@@ -281,22 +290,16 @@ abstract class PropertyVisitor {
         }
     }
 
-    private List<Field> getInheritedFields(final Class<?> type) {
-        final List<Field> fields = new ArrayList<Field>();
-        for (Class<?> c = type; c != null; c = c.getSuperclass()) {
-            fields.addAll(Arrays.asList(c.getDeclaredFields()));
-        }
-        return fields;
-    }
-
     /**
      * Checks if a {@link Class} implements a specified interface.
      * 
-     * @param is The class that should be checked if it implements an interface.
-     * @param should The interface that should be checked for.
+     * @param is
+     *            The class that should be checked if it implements an interface.
+     * @param should
+     *            The interface that should be checked for.
      * @return {@code true} if the class implements the interface {@code false} otherwise.
      */
-    private boolean classImplements(final Class<?> is, final Class<?> should) {
+    private static boolean classImplements(final Class<?> is, final Class<?> should) {
         for (Class<?> clazz : is.getInterfaces()) {
             if (clazz.equals(should)) {
                 return true;
@@ -306,6 +309,14 @@ abstract class PropertyVisitor {
             }
         }
         return false;
+    }
+
+    private static List<Field> getInheritedFields(final Class<?> type) {
+        final List<Field> fields = new ArrayList<Field>();
+        for (Class<?> c = type; c != null; c = c.getSuperclass()) {
+            fields.addAll(Arrays.asList(c.getDeclaredFields()));
+        }
+        return fields;
     }
 
     /**
@@ -329,10 +340,32 @@ abstract class PropertyVisitor {
     /**
      * Checks if objects of a class are observable objects.
      * 
-     * @param clazz The class to check
+     * @param clazz
+     *            The class to check
      * @return {@code true} if they are observable objects, {@code false} if not.
      */
     public static boolean isObservableObject(final Class<?> clazz) {
-        return !simpleObjects.contains(clazz);
+        if (simpleObjects.contains(clazz)) {
+            return false;
+        }
+        if (observableObjects.contains(clazz)) {
+            return true;
+        }
+        classify(clazz);
+        return isObservableObject(clazz);
+    }
+
+    private static void classify(final Class<?> clazz) {
+        for (final Field field : getInheritedFields(clazz)) {
+            field.setAccessible(true);
+
+            final Class<?> fieldClass = field.getType();
+            if (fieldClass == ListProperty.class || fieldClass == SetProperty.class || fieldClass == MapProperty.class
+                    || classImplements(fieldClass, Property.class)) {
+                observableObjects.add(clazz);
+                return;
+            }
+        }
+        simpleObjects.add(clazz);
     }
 }

@@ -22,16 +22,25 @@ package de.saxsys.synchronizefx.core.metamodel;
 import java.util.UUID;
 
 /**
- * Registers the {@link Property} instances of the users domain model and makes them identifiable by {@link UUID}. 
+ * Registers the {@link Property} instances of the users domain model and makes them identifiable by {@link UUID}.
  */
 public interface PropertyRegistry {
 
     /**
      * Returns the {@link Property} instances that is identified by a given {@link UUID}.
-     *  
-     * @param propertyId The id of the {@link Property} that should be returned.
+     * 
+     * @param propertyId
+     *            The id of the {@link Property} that should be returned.
      * @return The property if one is registered for the given id.
      */
     Optional<Property> getById(UUID propertyId);
 
+    /**
+     * Returns the id of a proprety.
+     * 
+     * @param property
+     *            The property that's id should be returned
+     * @return The id of the property or an empty {@link Optional} if the property has not yet been assigned an id.
+     */
+    Optional<UUID> idFor(Property property);
 }

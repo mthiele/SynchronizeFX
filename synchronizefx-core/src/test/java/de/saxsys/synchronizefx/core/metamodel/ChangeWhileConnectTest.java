@@ -51,7 +51,7 @@ import static org.junit.Assert.fail;
  */
 public class ChangeWhileConnectTest {
 
-    private static final int WAIT_TIMEOUT = 5000;
+    private static final int WAIT_TIMEOUT = 500000000;
 
     private Domain root;
     private SaveParameterCallback cb;
@@ -113,7 +113,7 @@ public class ChangeWhileConnectTest {
      * visited B. This test checks if this changes are lost (which shouldn't happen).
      * </p>
      */
-    @Test
+    @Test(timeout = WAIT_TIMEOUT)
     public void testChangeWhileWalking() {
         final Domain child1 = root.list.get(0);
 
@@ -153,7 +153,7 @@ public class ChangeWhileConnectTest {
      * an error would occur that an unknown object should be removed. This test checks if this happens.
      * </p>
      */
-    @Test
+    @Test(timeout = WAIT_TIMEOUT)
     public void testRemoveOfObjectThatWasntCreated() {
         final Domain child3 = new Domain();
         root.list.add(child3);
@@ -177,7 +177,7 @@ public class ChangeWhileConnectTest {
      * This list ensures that {@link ConcurrentModificationException} thrown by a list iterator in the property walker
      * don't result in incorrect results.
      */
-    @Test
+    @Test(timeout = WAIT_TIMEOUT)
     public void testProvokeConcurentModificationExceptionByListIterateors() {
         final Domain child3 = new Domain();
         root.list.add(child3);
@@ -201,7 +201,7 @@ public class ChangeWhileConnectTest {
     /**
      * Tests if changes that occurred after the property walking has finished but before the commands are send are lost.
      */
-    @Test
+    @Test(timeout = WAIT_TIMEOUT)
     public void testSynchronizeChangesAfterWalkingBeforeSending() {
         // MetaModel of the setup() method is not useful here.
         root = new Domain();
@@ -251,7 +251,7 @@ public class ChangeWhileConnectTest {
     /**
      * Test if incoming changes from other peers result n lost updates.
      */
-    @Test
+    @Test(timeout = WAIT_TIMEOUT)
     public void testIncommingChanges() {
         final Domain child1 = root.list.get(0);
         child1.waitingProperty.set(40);

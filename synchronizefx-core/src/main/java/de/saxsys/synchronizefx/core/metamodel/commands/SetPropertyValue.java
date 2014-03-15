@@ -29,7 +29,7 @@ import javafx.beans.property.Property;
  * @author raik.bieniek
  * 
  */
-public class SetPropertyValue {
+public class SetPropertyValue implements Command {
     
     private UUID propertyId;
     private Value value;

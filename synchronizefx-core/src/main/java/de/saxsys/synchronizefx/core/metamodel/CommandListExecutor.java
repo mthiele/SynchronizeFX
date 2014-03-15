@@ -43,10 +43,6 @@ import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromMap;
 import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromSet;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetRootElement;
-import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedModelChangeExecutor;
-import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedObservableObjectRegistry;
-import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedPropertyChangeNotificationDisabler;
-import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedPropertyRegistry;
 import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.SetPropertyValueExecutor;
 
 import org.slf4j.Logger;
@@ -63,11 +59,6 @@ public class CommandListExecutor {
     private final MetaModel parent;
     private final Listeners listeners;
     
-    private final PropertyRegistry propertyRegistry;
-    private final ObservableObjectRegistry observableObjectRegistry;
-    private final PropertyValueMapper propertyValueMapper;
-    private final PropertyChangeNotificationDisabler propertyChangeNotificationDisabler;
-    private final ModelChangeExecutor modelChangeExecutor;
     
     private final SetPropertyValueExecutor setPropertyValueExecutor;
     
@@ -90,18 +81,11 @@ public class CommandListExecutor {
      * @param topology The user callback that should be used to report errors.
      */
     public CommandListExecutor(final MetaModel parent, final Listeners listeners,
-            final TopologyLayerCallback topology) {
+            final TopologyLayerCallback topology, final SetPropertyValueExecutor setPropertyValueExecutor) {
         this.topology = topology;
         this.parent = parent;
         this.listeners = listeners;
-
-        this.propertyRegistry = new MetaModelBasedPropertyRegistry(parent);
-        this.observableObjectRegistry = new MetaModelBasedObservableObjectRegistry(parent);
-        this.propertyValueMapper = new RegistryBasedPropertyValueMapper(observableObjectRegistry, topology);
-        this.propertyChangeNotificationDisabler = new MetaModelBasedPropertyChangeNotificationDisabler(listeners);
-        this.modelChangeExecutor = new MetaModelBasedModelChangeExecutor(parent);
-        this.setPropertyValueExecutor = new SetPropertyValueExecutor(propertyRegistry, propertyValueMapper,
-                propertyChangeNotificationDisabler, modelChangeExecutor, topology);
+        this.setPropertyValueExecutor = setPropertyValueExecutor;
         
         if (LOG.isTraceEnabled()) {
             propFieldMap = new HashMap<>();

@@ -48,10 +48,11 @@ public class MetaModelBasedObservableObjectRegistry implements ObservableObjectR
 
     @Override
     public Optional<Object> getById(final UUID valueId) {
-        Object observableObject = metaModel.getById(valueId);
-        if (observableObject == null) {
-            return Optional.empty();
-        }
-        return Optional.of(observableObject);
+        return Optional.ofNullable(metaModel.getById(valueId));
+    }
+
+    @Override
+    public Optional<UUID> getId(final Object object) {
+        return Optional.ofNullable(metaModel.getId(object));
     }
 }

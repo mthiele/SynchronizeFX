@@ -19,8 +19,22 @@
 
 package de.saxsys.synchronizefx.core.metamodel;
 
-public interface Property {
+/**
+ * A wrapper for a single {@link Object} that can change.
+ */
+public interface Property extends Observable {
 
+    /**
+     * Changes the value that {@link Property} should wrap.
+     * 
+     * @param value the new value
+     */
     void setValue(PropertyValue value);
 
+    /**
+     * The value this {@link Property} currently wrapps.
+     * 
+     * @return the value
+     */
+    PropertyValue getValue();
 }

@@ -34,11 +34,16 @@ public class ChangesWhileConnectIT {
      * How often every single test should be executed.
      */
     private static final int EXECUTION_COUNT = 1000;
+    
+    /**
+     * The time in milliseconds a test may run before it is considered failed because of timeout.
+     */
+    private static final int TEST_TIMEOUT = 30000;
 
     /**
      * @see ChangeWhileConnectTest#testChangeWhileWalking().
      */
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testChangeWhileWalking() {
         for (int i = 0; i < EXECUTION_COUNT; i++) {
             initializedChangeWhileConnectTest().testChangeWhileWalking();
@@ -48,7 +53,7 @@ public class ChangesWhileConnectIT {
     /**
      * @see ChangeWhileConnectTest#testRemoveOfObjectThatWasntCreated().
      */
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRemoveOfObjectThatWasntCreated() {
         for (int i = 0; i < EXECUTION_COUNT; i++) {
             initializedChangeWhileConnectTest().testRemoveOfObjectThatWasntCreated();
@@ -58,7 +63,7 @@ public class ChangesWhileConnectIT {
     /**
      * @see ChangeWhileConnectTest#testProvokeConcurentModificationExceptionByListIterateors().
      */
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testProvokeConcurentModificationExceptionByListIterateors() {
         for (int i = 0; i < EXECUTION_COUNT; i++) {
             initializedChangeWhileConnectTest().testProvokeConcurentModificationExceptionByListIterateors();
@@ -68,7 +73,7 @@ public class ChangesWhileConnectIT {
     /**
      * @see ChangeWhileConnectTest#testSynchronizeChangesAfterWalkingBeforeSending().
      */
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testSynchronizeChangesAfterWalkingBeforeSending() {
         for (int i = 0; i < EXECUTION_COUNT; i++) {
             initializedChangeWhileConnectTest().testSynchronizeChangesAfterWalkingBeforeSending();
@@ -78,7 +83,7 @@ public class ChangesWhileConnectIT {
     /**
      * @see ChangeWhileConnectTest#testIncommingChanges().
      */
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testIncommingChanges() {
         for (int i = 0; i < EXECUTION_COUNT; i++) {
             initializedChangeWhileConnectTest().testIncommingChanges();

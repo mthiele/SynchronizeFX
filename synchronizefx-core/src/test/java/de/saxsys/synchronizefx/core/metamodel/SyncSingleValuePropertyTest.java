@@ -124,7 +124,7 @@ public class SyncSingleValuePropertyTest {
         newChild.childInt.set(275);
         root.someChild.set(newChild);
         // create the new child
-        assertEquals(cb.getCommands().get(0).getClass(), CreateObservableObject.class);
+        assertEquals(CreateObservableObject.class, cb.getCommands().get(0).getClass());
         // get(1) = SetPropertyValue for childInt in child; get(2) = SetPropertyValue for child in Root
         SetPropertyValue msg2 = (SetPropertyValue) cb.getCommands().get(2);
         assertNull(msg2.getValue().getSimpleObjectValue());

@@ -34,7 +34,9 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.MapProperty;
 import javafx.beans.property.Property;
 import javafx.beans.property.SetProperty;
+
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
+import de.saxsys.synchronizefx.core.metamodel.ModelWalkingSynchronizer.ActionType;
 import de.saxsys.synchronizefx.core.metamodel.commands.AddToList;
 import de.saxsys.synchronizefx.core.metamodel.commands.AddToSet;
 import de.saxsys.synchronizefx.core.metamodel.commands.ClearReferences;
@@ -43,35 +45,57 @@ import de.saxsys.synchronizefx.core.metamodel.commands.PutToMap;
 import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromList;
 import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromMap;
 import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromSet;
-import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetRootElement;
-import de.saxsys.synchronizefx.core.metamodel.commands.Value;
+import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedCommandDistributor;
+import de.saxsys.synchronizefx.core.metamodel.glue.MetaModleBasedObservableObjectDistributor;
+import de.saxsys.synchronizefx.core.metamodel.javafx.JfxProperty;
+import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.PropertyChangeDistributor;
 
 /**
  * Creates various types of commands that describe changes on the domain model.
  */
-class CommandListCreator {
+public class CommandListCreator {
 
-    private MetaModel parent;
+    private final MetaModel parent;
+    private final TopologyLayerCallback topology;
 
-    private TopologyLayerCallback topology;
+    private final PropertyChangeDistributor propertyChangeDistributor;
+    private final MetaModelBasedCommandDistributor commandDistributor;
+    private final MetaModleBasedObservableObjectDistributor observableObjectDistributor;
+    private final ModelWalkingSynchronizer synchronizer;
 
     /**
      * Initializes the creator.
      * 
-     * @param parent The model used to lookup and set ids for objects.
-     * @param topology The user callback used to report errors.
+     * @param parent
+     *            The model used to lookup and set ids for objects.
+     * @param topology
+     *            The user callback used to report errors.
+     * @param commandDistributor
      */
-    public CommandListCreator(final MetaModel parent, final TopologyLayerCallback topology) {
+    public CommandListCreator(final MetaModel parent, final TopologyLayerCallback topology,
+            final PropertyChangeDistributor propertyChangeDistributor,
+            final MetaModelBasedCommandDistributor commandDistributor,
+            final MetaModleBasedObservableObjectDistributor observableObjectDistributor,
+            final ModelWalkingSynchronizer synchronizer) {
         this.parent = parent;
         this.topology = topology;
+
+        this.propertyChangeDistributor = propertyChangeDistributor;
+        this.commandDistributor = commandDistributor;
+        this.observableObjectDistributor = observableObjectDistributor;
+        this.synchronizer = synchronizer;
+        commandDistributor.setCommandListCreator(this);
+        observableObjectDistributor.setCreator(this);
     }
 
     /**
      * @see MetaModel#commandsForDomainModel()
      * 
-     * @param root The root object of the domain model.
-     * @param callback The callback that takes the commands necessary to rebuild the domain model at it's current state.
+     * @param root
+     *            The root object of the domain model.
+     * @param callback
+     *            The callback that takes the commands necessary to rebuild the domain model at it's current state.
      */
     public void commandsForDomainModel(final Object root, final CommandsForDomainModelCallback callback) {
         State state = createCommandList(new WithCommandType() {
@@ -84,35 +108,22 @@ class CommandListCreator {
         SetRootElement msg = new SetRootElement();
         msg.setRootElementId(parent.getId(root));
         // prepend it to ClearReferences message
-        state.commands.add(state.commands.size() - 1, msg);
+        state.getCommands().add(state.getCommands().size() - 1, msg);
 
-        callback.commandsReady(state.commands);
-    }
-
-    /**
-     * Creates the messages necessary to set a new value for a property.
-     * 
-     * @param propertyId The id of the property where the new value should be set.
-     * @param value The value that should be set.
-     * @return The commands.
-     */
-    public List<Object> setPropertyValue(final UUID propertyId, final Object value) {
-        State state = createCommandList(new WithCommandType() {
-            @Override
-            public void invoke(final State state) {
-                setPropertyValue(propertyId, value, state);
-            }
-        }, true);
-        return state.commands;
+        callback.commandsReady(state.getCommands());
     }
 
     /**
      * Creates the list with commands necessary for an add to list action.
      * 
-     * @param listId The ID of the list where the element should be added.
-     * @param position The position in the list at which the value object should be added.
-     * @param value The object that should be added to the list.
-     * @param newSize The new size the list has after this command has been executed on it.
+     * @param listId
+     *            The ID of the list where the element should be added.
+     * @param position
+     *            The position in the list at which the value object should be added.
+     * @param value
+     *            The object that should be added to the list.
+     * @param newSize
+     *            The new size the list has after this command has been executed on it.
      * @return a list with commands necessary to recreate this add to list command.
      */
     public List<Object> addToList(final UUID listId, final int position, final Object value, final int newSize) {
@@ -122,14 +133,16 @@ class CommandListCreator {
                 addToList(listId, position, value, newSize, state);
             }
         }, true);
-        return state.commands;
+        return state.getCommands();
     }
 
     /**
      * Creates the list with commands necessary for an add to set action.
      * 
-     * @param setId The ID of the set where the element should be added.
-     * @param value The object that should be added to the set.
+     * @param setId
+     *            The ID of the set where the element should be added.
+     * @param value
+     *            The object that should be added to the set.
      * @return a set with commands necessary to recreate this add to set command.
      */
     public List<Object> addToSet(final UUID setId, final Object value) {
@@ -139,15 +152,18 @@ class CommandListCreator {
                 addToSet(setId, value, state);
             }
         }, true);
-        return state.commands;
+        return state.getCommands();
     }
 
     /**
      * Creates the list with commands necessary to put a mapping into a map.
      * 
-     * @param mapId the id of the map where the mapping should be added.
-     * @param key the key of the new mapping.
-     * @param value the value of the new mapping.
+     * @param mapId
+     *            the id of the map where the mapping should be added.
+     * @param key
+     *            the key of the new mapping.
+     * @param value
+     *            the value of the new mapping.
      * @return the list with the commands.
      */
     public List<Object> putToMap(final UUID mapId, final Object key, final Object value) {
@@ -157,15 +173,18 @@ class CommandListCreator {
                 putToMap(mapId, key, value, state);
             }
         }, true);
-        return state.commands;
+        return state.getCommands();
     }
 
     /**
      * Creates the list with commands necessary to remove a object from a list.
      * 
-     * @param listId The ID of the list where an element should be removed.
-     * @param position The position of the element in the list which should be removed.
-     * @param newSize The size the list will have after this command has been applied.
+     * @param listId
+     *            The ID of the list where an element should be removed.
+     * @param position
+     *            The position of the element in the list which should be removed.
+     * @param newSize
+     *            The size the list will have after this command has been applied.
      * @return The command list.
      */
     public List<Object> removeFromList(final UUID listId, final int position, final int newSize) {
@@ -181,8 +200,10 @@ class CommandListCreator {
     /**
      * Creates the list with command necessary to remove a mapping from a map.
      * 
-     * @param mapId the map where the mapping should be removed.
-     * @param key the key of the mapping that should be removed.
+     * @param mapId
+     *            the map where the mapping should be removed.
+     * @param key
+     *            the key of the mapping that should be removed.
      * @return the list with the commands.
      */
     public List<Object> removeFromMap(final UUID mapId, final Object key) {
@@ -203,15 +224,17 @@ class CommandListCreator {
         } else {
             msg.setKeySimpleObjectValue(key);
         }
-        state.commands.add(state.commands.size() - 1, msg);
-        return state.commands;
+        state.getCommands().add(state.getCommands().size() - 1, msg);
+        return state.getCommands();
     }
 
     /**
      * Creates the list with commands necessary to remove a object from a set.
      * 
-     * @param setId The ID of the set where an element should be removed.
-     * @param value The element that should be removed.
+     * @param setId
+     *            The ID of the set where an element should be removed.
+     * @param value
+     *            The element that should be removed.
      * @return The command list.
      */
     public List<Object> removeFromSet(final UUID setId, final Object value) {
@@ -233,24 +256,8 @@ class CommandListCreator {
             msg.setSimpleObjectValue(value);
         }
 
-        state.commands.add(state.commands.size() - 1, msg);
-        return state.commands;
-    }
-
-    private void setPropertyValue(final UUID propertyId, final Object value, final State state) {
-        SetPropertyValue msg = new SetPropertyValue();
-        msg.setPropertyId(propertyId);
-
-        Value valueMsg = new Value();
-        boolean isObservableObject = createObservableObject(value, state);
-        if (isObservableObject) {
-            valueMsg.setObservableObjectId(parent.getId(value));
-        } else {
-            valueMsg.setSimpleObjectValue(value);
-        }
-        msg.setValue(valueMsg);
-
-        state.commands.add(msg);
+        state.getCommands().add(state.getCommands().size() - 1, msg);
+        return state.getCommands();
     }
 
     private void addToList(final UUID listId, final int position, final Object value, final int newSize,
@@ -267,7 +274,7 @@ class CommandListCreator {
             msg.setSimpleObjectValue(value);
         }
 
-        state.commands.add(msg);
+        state.getCommands().add(msg);
     }
 
     private void addToSet(final UUID setId, final Object value, final State state) {
@@ -281,7 +288,7 @@ class CommandListCreator {
             msg.setSimpleObjectValue(value);
         }
 
-        state.commands.add(msg);
+        state.getCommands().add(msg);
     }
 
     private void putToMap(final UUID mapId, final Object key, final Object value, final State state) {
@@ -302,7 +309,7 @@ class CommandListCreator {
         } else {
             msg.setValueSimpleObjectValue(value);
         }
-        state.commands.add(msg);
+        state.getCommands().add(msg);
     }
 
     /**
@@ -310,12 +317,13 @@ class CommandListCreator {
      * 
      * If {@code value} isn't an observable object, then nothing is added to the commandList.
      * 
-     * @param value The object for which the commands should be created.
-     * @param commandList The list where the commands should be added to.
-     * @param state The state of this domain model parsing.
+     * @param value
+     *            The object for which the commands should be created.
+     * @param state
+     *            The state of this domain model parsing.
      * @return true if value is an observable object and false otherwise.
      */
-    private boolean createObservableObject(final Object value, final State state) {
+    public boolean createObservableObject(final Object value, final State state) {
         if (value == null || !PropertyVisitor.isObservableObject(value.getClass())) {
             return state.lastObjectWasObservable = false;
         }
@@ -332,14 +340,15 @@ class CommandListCreator {
         }
 
         final CreateObservableObject msg = new CreateObservableObject();
-        int currentSize = state.commands.size();
+        int currentSize = state.getCommands().size();
 
         try {
             new PropertyVisitor(value) {
                 @Override
                 protected boolean visitSingleValueProperty(final Property<?> fieldValue) {
-                    UUID fieldId = registerPropertyAndParent(getCurrentField(), fieldValue);
-                    setPropertyValue(fieldId, fieldValue.getValue(), state);
+                    registerPropertyAndParent(getCurrentField(), fieldValue);
+                    createObservableObject(fieldValue.getValue(), state);
+                    propertyChangeDistributor.onChange(new JfxProperty((Property<Object>) fieldValue));
                     return false;
                 }
 
@@ -393,12 +402,14 @@ class CommandListCreator {
         }
         msg.setClassName(value.getClass().getName());
         // create the object before it's field values are set
-        state.commands.add(currentSize, msg);
+        state.getCommands().add(currentSize, msg);
         return state.lastObjectWasObservable = true;
     }
 
-    private State createCommandList(final WithCommandType type, final boolean skipKnown) {
+    public State createCommandList(final WithCommandType type, final boolean skipKnown) {
         State state = new State(skipKnown);
+        this.commandDistributor.setState(state);
+        this.observableObjectDistributor.setState(state);
         boolean restart = true;
         while (restart) {
             restart = false;
@@ -409,14 +420,25 @@ class CommandListCreator {
                 restart = true;
             }
         }
-        state.commands.add(new ClearReferences());
+        commandDistributor.setState(null);
+        observableObjectDistributor.setState(null);
+        state.getCommands().add(new ClearReferences());
         return state;
+    }
+    
+    public void distributeCommands(final List<Object> commands) {
+        synchronizer.doWhenModelWalkerFinished(ActionType.LOCAL_PROPERTY_CHANGES, new Runnable() {
+            @Override
+            public void run() {
+                topology.sendCommands(commands);
+            }
+        });
     }
 
     /**
      * The state that must be keeped for the creation of depend messages.
      */
-    private static class State {
+    public static class State {
         /**
          * only {@code synchronized} access allowed.
          */
@@ -441,13 +463,31 @@ class CommandListCreator {
             commands.clear();
             lastObjectWasObservable = false;
         }
+
+        /**
+         * The list of commands that should be distributed together.
+         * 
+         * @return The list of commands.
+         */
+        public List<Object> getCommands() {
+            return commands;
+        }
+
+        /**
+         * Whether commands for known objects should be created or not.
+         * 
+         * @return <code>false</code> if they should, <code>true</code> if they shouldn't.
+         */
+        public boolean getSkipKnown() {
+            return skipKnown;
+        }
     }
 
     /**
      * Used to define methods that should be really be executed when calling
      * {@link CommandListCreator#createCommandList(WithCommandType, boolean)}.
      */
-    private interface WithCommandType {
+    public interface WithCommandType {
         void invoke(State state);
     }
 }

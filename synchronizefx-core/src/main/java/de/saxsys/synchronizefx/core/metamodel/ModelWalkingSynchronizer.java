@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Raik Bieniek <raik.bieniek@saxsys.de>
  */
-class ModelWalkingSynchronizer {
+public class ModelWalkingSynchronizer {
 
     /**
      * The type of an action that should be executed when the model walking has finished.

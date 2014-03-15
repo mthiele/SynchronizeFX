@@ -37,13 +37,14 @@ import de.saxsys.synchronizefx.core.metamodel.javafx.JfxProperty;
  * </p>
  */
 public class MetaModelBasedPropertyRegistry implements PropertyRegistry {
-    
+
     private MetaModel metaModel;
 
     /**
      * Initializes an instance with all it's dependencies.
      * 
-     * @param metaModel the meta model to use.
+     * @param metaModel
+     *            the meta model to use.
      */
     public MetaModelBasedPropertyRegistry(final MetaModel metaModel) {
         this.metaModel = metaModel;
@@ -55,13 +56,23 @@ public class MetaModelBasedPropertyRegistry implements PropertyRegistry {
         if (property == null) {
             return Optional.empty();
         }
-        return Optional.<Property>of(new JfxProperty(property));
+        return Optional.<Property> of(new JfxProperty(property));
+    }
+
+    @Override
+    public Optional<UUID> idFor(final Property property) {
+        if (!(property instanceof JfxProperty)) {
+            return Optional.empty();
+        }
+        UUID id = metaModel.getId(((JfxProperty) property).getJfxProperty());
+        return Optional.ofNullable(id);
     }
 
     /**
-     * Queries the meta model for a JavaFX property with a given id. 
+     * Queries the meta model for a JavaFX property with a given id.
      * 
-     * @param propertyId the id to query for.
+     * @param propertyId
+     *            the id to query for.
      * @return the property or <code>null</code> if none is registered for the given id.
      */
     @SuppressWarnings("unchecked")

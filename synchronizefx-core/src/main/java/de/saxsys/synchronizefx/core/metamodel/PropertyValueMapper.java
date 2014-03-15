@@ -33,4 +33,12 @@ public interface PropertyValueMapper {
      * @return the value for a property.
      */
     PropertyValue map(Value message);
+
+    /**
+     * Maps a {@link PropertyValue} to the corresponding message.
+     * 
+     * @param propertyValue the value for a property to map
+     * @return the mapped value
+     */
+    Value map(PropertyValue propertyValue);
 }

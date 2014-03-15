@@ -27,15 +27,16 @@ public interface PropertyChangeNotificationDisabler {
     /**
      * Disable change notification for a given property.
      * 
-     * @param prop the property change notification should be disabled for.
+     * @param prop
+     *            the property change notification should be disabled for.
      */
     void disableFor(Property prop);
 
     /**
      * Enables change notification for a given property.
      * 
-     * @param prop the property change notification should be re-enabled for.
+     * @param prop
+     *            the property change notification should be re-enabled for.
      */
     void enableFor(Property prop);
-
 }

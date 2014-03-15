@@ -25,13 +25,14 @@ import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.commands.Value;
 
 /**
- * Maps commands to {@link PropertyValue} using an {@link ObservableObjectRegistry} to hold the references of
- * <em>observable objects</em>.
+ * Maps and creates commands to {@link PropertyValue} and vice versa pushing all unknown {@link Observable}s to other
+ * peers.
  */
-class RegistryBasedPropertyValueMapper implements PropertyValueMapper {
+class PushBasedBasedPropertyValueMapper implements PropertyValueMapper {
 
     private final ObservableObjectRegistry mapper;
     private final TopologyLayerCallback topology;
+    private final ObservableObjectDistributor observableObjectDistributor;
 
     /**
      * Initializes an instance with all it's dependencies.
@@ -40,11 +41,14 @@ class RegistryBasedPropertyValueMapper implements PropertyValueMapper {
      *            used to retrieve <em>observable objects</em>
      * @param topology
      *            used to inform the next layer on mapping errors.
+     * @param observableObjectDistributor
+     *            used to inform other peers of new observable objects.
      */
-    public RegistryBasedPropertyValueMapper(final ObservableObjectRegistry mapper,
-            final TopologyLayerCallback topology) {
+    public PushBasedBasedPropertyValueMapper(final ObservableObjectRegistry mapper,
+            final TopologyLayerCallback topology, final ObservableObjectDistributor observableObjectDistributor) {
         this.topology = topology;
         this.mapper = mapper;
+        this.observableObjectDistributor = observableObjectDistributor;
     }
 
     @Override
@@ -62,5 +66,33 @@ class RegistryBasedPropertyValueMapper implements PropertyValueMapper {
         } else {
             return new SimplePropertyValue(message.getSimpleObjectValue(), false);
         }
+    }
+
+    @Override
+    public Value map(final PropertyValue value) {
+        Value valueMessage = new Value();
+        if (!value.isObservable()) {
+            valueMessage.setSimpleObjectValue(value.value());
+            return valueMessage;
+        }
+
+        final UUID valueId = getOrCreateIdFor(value.value());
+        valueMessage.setObservableObjectId(valueId);
+        return valueMessage;
+    }
+
+    private UUID getOrCreateIdFor(final Object value) {
+        Optional<UUID> valueId = mapper.getId(value);
+        if (!valueId.isPresent()) {
+            observableObjectDistributor.distributeNewObservableObject(value);
+            // TODO currently registration of the object is made by the distributor above.
+            // This should made more clear.
+        }
+        valueId = mapper.getId(value);
+        if (!valueId.isPresent()) {
+            throw new RuntimeException(new SynchronizeFXException(
+                    "BUG: New observbale object was not registerd in the MetaModel."));
+        }
+        return valueId.get();
     }
 }

@@ -29,9 +29,6 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.MapProperty;
 import javafx.beans.property.Property;
 import javafx.beans.property.SetProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.beans.value.WeakChangeListener;
 import javafx.collections.ListChangeListener;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
@@ -44,6 +41,8 @@ import javafx.collections.WeakSetChangeListener;
 
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.ModelWalkingSynchronizer.ActionType;
+import de.saxsys.synchronizefx.core.metamodel.javafx.JfxProperty;
+import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.PropertyChangeDistributor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +52,7 @@ import org.slf4j.LoggerFactory;
  * properties the listener is registered on.
  * 
  */
-public class Listeners implements ChangeListener<Object>, ListChangeListener<Object>, SetChangeListener<Object>,
+public class Listeners implements ListChangeListener<Object>, SetChangeListener<Object>,
         MapChangeListener<Object, Object> {
 
     private static final Logger LOG = LoggerFactory.getLogger(Listeners.class);
@@ -63,12 +62,14 @@ public class Listeners implements ChangeListener<Object>, ListChangeListener<Obj
     private final TopologyLayerCallback topology;
     private final ModelWalkingSynchronizer synchronizer;
 
-    private final WeakChangeListener<Object> propertyListener = new WeakChangeListener<>(this);
     private final WeakListChangeListener<Object> listListener = new WeakListChangeListener<>(this);
     private final WeakSetChangeListener<Object> setListener = new WeakSetChangeListener<>(this);
     private final WeakMapChangeListener<Object, Object> mapListener = new WeakMapChangeListener<>(this);
 
     private final Map<Object, Object> disabledFor = new IdentityHashMap<>();
+
+    private final PropertyChangeDistributor propertyChangeDistributor;
+    private final PropertyChangeNotificationDisabler jfxPropertyChangeListener;
 
     /**
      * Initializes the Listeners.
@@ -77,13 +78,18 @@ public class Listeners implements ChangeListener<Object>, ListChangeListener<Obj
      * @param creator The creator to use for command creation.
      * @param topology The user callback to use when errors occur.
      * @param synchronizer The model walking locker to block user threads as long as a model walking process is active.
+     * @param propertyChangeDistributor used to report changes on properties
      */
     public Listeners(final MetaModel parent, final CommandListCreator creator, final TopologyLayerCallback topology,
-            final ModelWalkingSynchronizer synchronizer) {
+            final ModelWalkingSynchronizer synchronizer, final PropertyChangeDistributor propertyChangeDistributor,
+            final PropertyChangeNotificationDisabler jfxPropertyChangeListener) {
         this.parent = parent;
         this.creator = creator;
         this.topology = topology;
         this.synchronizer = synchronizer;
+        
+        this.propertyChangeDistributor = propertyChangeDistributor;
+        this.jfxPropertyChangeListener = jfxPropertyChangeListener;
     }
 
     /**
@@ -97,8 +103,9 @@ public class Listeners implements ChangeListener<Object>, ListChangeListener<Obj
             new PropertyVisitor(object) {
                 @Override
                 protected boolean visitSingleValueProperty(final Property<?> fieldValue) {
-                    fieldValue.removeListener(propertyListener);
-                    fieldValue.addListener(propertyListener);
+                    JfxProperty property = new JfxProperty((Property<Object>) fieldValue);
+                    jfxPropertyChangeListener.disableFor(property);
+                    jfxPropertyChangeListener.enableFor(property);
                     return true;
                 }
 
@@ -129,45 +136,6 @@ public class Listeners implements ChangeListener<Object>, ListChangeListener<Obj
             topology.onError(new SynchronizeFXException(
                     "Maybe you're JVM doesn't allow reflection for this application?", e));
         }
-    }
-
-    /**
-     * Registers listeners on a property so that commands are created when changes in the property occur.
-     * 
-     * @param prop The property to register the change listeners on.
-     */
-    public void registerOn(final Property<?> prop) {
-        prop.addListener(propertyListener);
-    }
-
-    /**
-     * Registers listeners on a property so that commands are created when changes in the property occur.
-     * 
-     * @param list The property to register the change listeners on.
-     */
-    public void registerOn(final ListProperty<?> list) {
-        list.addListener(listListener);
-    }
-
-    /**
-     * Registers listeners on a property so that commands are created when changes in the property occur.
-     * 
-     * @param map The property to register the change listeners on.
-     */
-    public void registerOn(final MapProperty<?, ?> map) {
-        map.addListener(mapListener);
-    }
-
-    @Override
-    public void changed(final ObservableValue<? extends Object> property, final Object oldValue, final Object newValue) {
-        if (disabledFor.containsKey(property)) {
-            return;
-        }
-        final List<Object> commands = creator.setPropertyValue(parent.getId(property), newValue);
-        if (newValue != null) {
-            registerListenersOnEverything(newValue);
-        }
-        distributeCommands(commands);
     }
 
     @Override
