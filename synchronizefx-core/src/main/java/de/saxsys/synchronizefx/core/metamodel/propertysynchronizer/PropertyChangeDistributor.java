@@ -74,6 +74,7 @@ public class PropertyChangeDistributor {
         if (!propertyId.isPresent()) {
             topology.onError(new SynchronizeFXException(
                     "A change of the value of an unknown property should be distributed: " + property));
+            return;
         }
 
         final Value propertyValueMessage = propertyValueMapper.map(property.getValue());
