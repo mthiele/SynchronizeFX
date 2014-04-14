@@ -46,6 +46,7 @@ import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromList;
 import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromMap;
 import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromSet;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetRootElement;
+import de.saxsys.synchronizefx.core.metamodel.commands.Value;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedCommandDistributor;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModleBasedObservableObjectDistributor;
 import de.saxsys.synchronizefx.core.metamodel.javafx.JfxProperty;
@@ -282,11 +283,13 @@ public class CommandListCreator {
         msg.setSetId(setId);
 
         boolean isObservableObject = createObservableObject(value, state);
+        Value valueMessage = new Value();
         if (isObservableObject) {
-            msg.setObservableObjectId(parent.getId(value));
+            valueMessage.setObservableObjectId(parent.getId(value));
         } else {
-            msg.setSimpleObjectValue(value);
+            valueMessage.setSimpleObjectValue(value);
         }
+        msg.setValue(valueMessage);
 
         state.getCommands().add(msg);
     }

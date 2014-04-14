@@ -51,7 +51,7 @@ import static org.junit.Assert.fail;
  */
 public class ChangeWhileConnectTest {
 
-    private static final int WAIT_TIMEOUT = 500000000;
+    private static final int WAIT_TIMEOUT = 5000;
 
     private Domain root;
     private SaveParameterCallback cb;

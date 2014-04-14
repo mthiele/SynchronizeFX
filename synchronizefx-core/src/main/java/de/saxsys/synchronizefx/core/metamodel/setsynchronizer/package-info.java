@@ -17,24 +17,7 @@
  * along with SynchronizeFX. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.saxsys.synchronizefx.core.metamodel;
-
 /**
- * A wrapper for a single {@link Object} that can change.
+ * Synchronizes observable sets between multiple peers. 
  */
-public interface Property extends Observable {
-
-    /**
-     * Changes the value that {@link Property} should wrap.
-     * 
-     * @param value the new value
-     */
-    void setValue(ObservedValue value);
-
-    /**
-     * The value this {@link Property} currently wrapps.
-     * 
-     * @return the value
-     */
-    ObservedValue getValue();
-}
+package de.saxsys.synchronizefx.core.metamodel.setsynchronizer;

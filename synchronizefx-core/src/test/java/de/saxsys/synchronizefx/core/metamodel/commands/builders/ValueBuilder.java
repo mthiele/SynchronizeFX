@@ -32,10 +32,11 @@ public class ValueBuilder {
 
     /**
      * @see Value#getSimpleObjectValue()
-     * @param simpleObjectValue the simple object
+     * @param simpleObjectValue
+     *            the simple object
      * @return this builder
      */
-    public ValueBuilder simpleObjectValue(final Object simpleObjectValue) {
+    public ValueBuilder withSimpleObject(final Object simpleObjectValue) {
         value.setSimpleObjectValue(simpleObjectValue);
         return this;
     }
@@ -51,14 +52,23 @@ public class ValueBuilder {
         }
         return value;
     }
-    
+
     /**
      * Creates a builder that will build a {@link Value} that contains a simple object.
      * 
      * @return the builder
      */
     public static ValueBuilder randomSimpleObject() {
-        return new ValueBuilder().simpleObjectValue(createRandomObject());
+        return new ValueBuilder().withSimpleObject(createRandomObject());
+    }
+
+    /**
+     * Creates a new value builder.
+     * 
+     * @return The builder created
+     */
+    public static ValueBuilder valueMessage() {
+        return new ValueBuilder();
     }
 
     private static Object createRandomObject() {

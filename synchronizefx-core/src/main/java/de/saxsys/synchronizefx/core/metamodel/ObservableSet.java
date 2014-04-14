@@ -19,26 +19,21 @@
 
 package de.saxsys.synchronizefx.core.metamodel;
 
-import de.saxsys.synchronizefx.core.metamodel.commands.Value;
-
 /**
- * Maps {@link Value} messages to {@link PropertyValue}s.
+ * A set of values that can be observed for changes.
  */
-public interface PropertyValueMapper {
+public interface ObservableSet extends Observable {
 
     /**
-     * Maps a message to the corresponding {@link PropertyValue}.
+     * Adds a value to the set.
      * 
-     * @param message the message to map
-     * @return the value for a property.
-     */
-    PropertyValue map(Value message);
-
-    /**
-     * Maps a {@link PropertyValue} to the corresponding message.
+     * <p>
+     * If the set already contained an element that is {@link #equals(Object)} to <code>value</code>, it is replaced
+     * with <code>value</code>
+     * </p>
      * 
-     * @param propertyValue the value for a property to map
-     * @return the mapped value
+     * @param value
+     *            The value to add.
      */
-    Value map(PropertyValue propertyValue);
+    void add(ObservedValue value);
 }

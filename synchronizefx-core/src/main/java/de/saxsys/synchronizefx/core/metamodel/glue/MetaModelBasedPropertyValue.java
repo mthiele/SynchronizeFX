@@ -20,14 +20,14 @@
 package de.saxsys.synchronizefx.core.metamodel.glue;
 
 import de.saxsys.synchronizefx.core.metamodel.MetaModel;
-import de.saxsys.synchronizefx.core.metamodel.PropertyValue;
+import de.saxsys.synchronizefx.core.metamodel.ObservedValue;
 import de.saxsys.synchronizefx.core.metamodel.PropertyVisitor;
 
 /**
  * A temporary implementation that decides if an object is observable based on the current {@link MetaModel}
  * implementation.
  */
-public class MetaModelBasedPropertyValue implements PropertyValue {
+public class MetaModelBasedPropertyValue implements ObservedValue {
 
     private final Object value;
     private final boolean isObservable;

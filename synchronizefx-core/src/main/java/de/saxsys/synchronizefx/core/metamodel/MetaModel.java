@@ -81,7 +81,7 @@ public class MetaModel {
         final MetaModleBasedObservableObjectDistributor observableObjectDistributor =
                 new MetaModleBasedObservableObjectDistributor(this);
 
-        final PushBasedBasedPropertyValueMapper propertyValueMapper = new PushBasedBasedPropertyValueMapper(
+        final PushBasedBasedObservedValueMapper propertyValueMapper = new PushBasedBasedObservedValueMapper(
                 observableObjectRegistry, topology, observableObjectDistributor);
 
         final PropertyChangeDistributor propertyChangeDistributor = new PropertyChangeDistributor(propertyValueMapper,

@@ -19,28 +19,20 @@
 
 package de.saxsys.synchronizefx.core.metamodel;
 
+import java.util.UUID;
+
 /**
- * A value for {@link Property} which can be an <em>observable object</em> if it contains {@link Property} fields itself
- * or a <em>simple object</em> if it does not.
- * 
- * <p>
- * The {@link Property}s of <em>observable object</em> can be monitored for changes too while <em>simple objects</em>
- * cannot.
+ * Holds {@link ObservableSet}s that can be retrieved via their id.
  */
-public interface PropertyValue {
+public interface ObservableSetRegistry {
 
     /**
-     * The value that is wrapped.
+     * Queries the registry for an {@link ObservableSet}.
      * 
-     * @return the value
+     * @param id
+     *            The id of the {@link ObservableSet} to return.
+     * @return The {@link ObservableSet} registered under the <code>id</code> or an empty {@link Optional} if no
+     *         {@link ObservableSet} is registered under that id.
      */
-    Object value();
-
-    /**
-     * Whether this value is an observable object or a simple object.
-     * 
-     * @return <code>true</code> if this instance contains an <em>observable object</em> and <code>false</code> if it
-     *         contains a <em>simple object</em>.
-     */
-    boolean isObservable();
+    Optional<ObservableSet> getById(UUID id);
 }

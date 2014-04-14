@@ -19,35 +19,28 @@
 
 package de.saxsys.synchronizefx.core.metamodel;
 
-
 /**
- * An implementation that just stores the value and whether it is observable or not.
+ * A value for {@link Observable} which can be an <em>observable object</em> if it contains {@link Property} fields or a
+ * <em>simple object</em> if it does not.
+ * 
+ * <p>
+ * The {@link Property}s of <em>observable object</em> can be monitored for changes too while <em>simple objects</em>
+ * cannot.</p>
  */
-class SimplePropertyValue implements ObservedValue {
-
-    private final Object value;
-    private final boolean isObservable;
+public interface ObservedValue {
 
     /**
-     * Initializes an instance.
+     * The value that is wrapped.
      * 
-     * @param value
-     *            The value to wrap.
-     * @param isObservable
-     *            see {@link ObservedValue#isObservable()}
+     * @return the value
      */
-    public SimplePropertyValue(final Object value, final boolean isObservable) {
-        this.value = value;
-        this.isObservable = isObservable;
-    }
+    Object value();
 
-    @Override
-    public Object value() {
-        return value;
-    }
-
-    @Override
-    public boolean isObservable() {
-        return isObservable;
-    }
+    /**
+     * Whether this value is an observable object or a simple object.
+     * 
+     * @return <code>true</code> if this instance contains an <em>observable object</em> and <code>false</code> if it
+     *         contains a <em>simple object</em>.
+     */
+    boolean isObservable();
 }

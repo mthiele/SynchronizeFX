@@ -21,7 +21,7 @@ package de.saxsys.synchronizefx.core.metamodel.javafx;
 
 import javafx.beans.property.Property;
 
-import de.saxsys.synchronizefx.core.metamodel.PropertyValue;
+import de.saxsys.synchronizefx.core.metamodel.ObservedValue;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedPropertyValue;
 
 /**
@@ -50,12 +50,12 @@ public class JfxProperty implements de.saxsys.synchronizefx.core.metamodel.Prope
     }
 
     @Override
-    public void setValue(final PropertyValue value) {
+    public void setValue(final ObservedValue value) {
         property.setValue(value.value());
     }
 
     @Override
-    public PropertyValue getValue() {
+    public ObservedValue getValue() {
         return new MetaModelBasedPropertyValue(property.getValue());
     }
 }

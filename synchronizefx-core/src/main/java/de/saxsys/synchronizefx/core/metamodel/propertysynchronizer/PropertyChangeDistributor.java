@@ -23,10 +23,10 @@ import java.util.UUID;
 
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.CommandDistributor;
+import de.saxsys.synchronizefx.core.metamodel.ObservedValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.Optional;
 import de.saxsys.synchronizefx.core.metamodel.Property;
 import de.saxsys.synchronizefx.core.metamodel.PropertyRegistry;
-import de.saxsys.synchronizefx.core.metamodel.PropertyValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.TopologyLayerCallback;
 import de.saxsys.synchronizefx.core.metamodel.commands.Command;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
@@ -37,7 +37,7 @@ import de.saxsys.synchronizefx.core.metamodel.commands.Value;
  */
 public class PropertyChangeDistributor {
 
-    private final PropertyValueMapper propertyValueMapper;
+    private final ObservedValueMapper observedValueMapper;
     private final PropertyRegistry propertyRegistry;
     private final CommandDistributor commandDistributor;
     private final TopologyLayerCallback topology;
@@ -45,7 +45,7 @@ public class PropertyChangeDistributor {
     /**
      * Initializes the instance.
      * 
-     * @param propertyValueMapper
+     * @param observedValueMapper
      *            used to map values of properties that have changed to messages
      * @param propertyRegistry
      *            used to retrieve the id for properties
@@ -54,10 +54,10 @@ public class PropertyChangeDistributor {
      * @param topology
      *            used to notify the user of errors
      */
-    public PropertyChangeDistributor(final PropertyValueMapper propertyValueMapper,
+    public PropertyChangeDistributor(final ObservedValueMapper observedValueMapper,
             final PropertyRegistry propertyRegistry, final CommandDistributor commandDistributor,
             final TopologyLayerCallback topology) {
-        this.propertyValueMapper = propertyValueMapper;
+        this.observedValueMapper = observedValueMapper;
         this.propertyRegistry = propertyRegistry;
         this.commandDistributor = commandDistributor;
         this.topology = topology;
@@ -77,7 +77,7 @@ public class PropertyChangeDistributor {
             return;
         }
 
-        final Value propertyValueMessage = propertyValueMapper.map(property.getValue());
+        final Value propertyValueMessage = observedValueMapper.map(property.getValue());
 
         SetPropertyValue command = new SetPropertyValue();
         command.setPropertyId(propertyId.get());

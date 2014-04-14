@@ -347,23 +347,23 @@ public class CommandListExecutor {
 
     private void execute(final AddToSet command) {
         @SuppressWarnings("unchecked")
-        final Set<Object> set = (Set<Object>) parent.getById(command.getListId());
+        final Set<Object> set = (Set<Object>) parent.getById(command.getSetId());
         if (set == null) {
             topology.onError(new SynchronizeFXException("AddToSet command with unknown list id recived. "
-                    + command.getListId()));
+                    + command.getSetId()));
             return;
         }
         final Object value;
-        final UUID valueId = command.getObservableObjectId();
+        final UUID valueId = command.getValue().getObservableObjectId();
         if (valueId != null) {
             value = parent.getById(valueId);
             if (value == null) {
                 topology.onError(new SynchronizeFXException("AddToSet command unknown with value object id recived. "
-                        + command.getObservableObjectId()));
+                        + command.getValue().getObservableObjectId()));
                 return;
             }
         } else {
-            value = command.getSimpleObjectValue();
+            value = command.getValue().getSimpleObjectValue();
         }
 
         // TODO catch index out of bounds exception.

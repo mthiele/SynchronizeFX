@@ -19,35 +19,26 @@
 
 package de.saxsys.synchronizefx.core.metamodel;
 
+import de.saxsys.synchronizefx.core.metamodel.commands.Value;
 
 /**
- * An implementation that just stores the value and whether it is observable or not.
+ * Maps {@link Value} messages to {@link ObservedValue}s.
  */
-class SimplePropertyValue implements ObservedValue {
-
-    private final Object value;
-    private final boolean isObservable;
+public interface ObservedValueMapper {
 
     /**
-     * Initializes an instance.
+     * Maps a message to the corresponding {@link ObservedValue}.
      * 
-     * @param value
-     *            The value to wrap.
-     * @param isObservable
-     *            see {@link ObservedValue#isObservable()}
+     * @param message the message to map
+     * @return the value for a property.
      */
-    public SimplePropertyValue(final Object value, final boolean isObservable) {
-        this.value = value;
-        this.isObservable = isObservable;
-    }
+    ObservedValue map(Value message);
 
-    @Override
-    public Object value() {
-        return value;
-    }
-
-    @Override
-    public boolean isObservable() {
-        return isObservable;
-    }
+    /**
+     * Maps a {@link ObservedValue} to the corresponding message.
+     * 
+     * @param propertyValue the value for a property to map
+     * @return the mapped value
+     */
+    Value map(ObservedValue propertyValue);
 }

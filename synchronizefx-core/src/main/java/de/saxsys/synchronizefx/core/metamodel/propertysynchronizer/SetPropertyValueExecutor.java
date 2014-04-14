@@ -24,12 +24,12 @@ import java.util.UUID;
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.CommandExecutor;
 import de.saxsys.synchronizefx.core.metamodel.ModelChangeExecutor;
+import de.saxsys.synchronizefx.core.metamodel.ObservedValue;
+import de.saxsys.synchronizefx.core.metamodel.ObservedValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.Optional;
 import de.saxsys.synchronizefx.core.metamodel.Property;
 import de.saxsys.synchronizefx.core.metamodel.PropertyChangeNotificationDisabler;
 import de.saxsys.synchronizefx.core.metamodel.PropertyRegistry;
-import de.saxsys.synchronizefx.core.metamodel.PropertyValue;
-import de.saxsys.synchronizefx.core.metamodel.PropertyValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.TopologyLayerCallback;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 
@@ -43,16 +43,16 @@ public class SetPropertyValueExecutor implements CommandExecutor<SetPropertyValu
     private final PropertyChangeNotificationDisabler notificationDisabler;
 
     private final PropertyRegistry propertyMapper;
-    private final PropertyValueMapper propertyValueMapper;
+    private final ObservedValueMapper observedValueMapper;
 
     /**
      * Initializes the executor with all it's needed dependencies.
      * 
      * @param propertyMapper
      *            used to map {@link UUID} to {@link Property}s and vice versa.
-     * @param propertyValueMapper
+     * @param observedValueMapper
      *            used to map {@link de.saxsys.synchronizefx.core.metamodel.commands.Value} messages to
-     *            {@link PropertyValue} instances
+     *            {@link ObservedValue} instances
      * @param topology
      *            used to inform the next layer of errors.
      * @param notificationDisabler
@@ -61,11 +61,11 @@ public class SetPropertyValueExecutor implements CommandExecutor<SetPropertyValu
      *            used to execute changes on the domain model of the user.
      */
     public SetPropertyValueExecutor(final PropertyRegistry propertyMapper,
-            final PropertyValueMapper propertyValueMapper,
+            final ObservedValueMapper observedValueMapper,
             final PropertyChangeNotificationDisabler notificationDisabler, final ModelChangeExecutor executor,
             final TopologyLayerCallback topology) {
         this.propertyMapper = propertyMapper;
-        this.propertyValueMapper = propertyValueMapper;
+        this.observedValueMapper = observedValueMapper;
         this.topology = topology;
         this.notificationDisabler = notificationDisabler;
         this.modelChangeExecutor = executor;
@@ -80,7 +80,7 @@ public class SetPropertyValueExecutor implements CommandExecutor<SetPropertyValu
             return;
         }
 
-        PropertyValue value = propertyValueMapper.map(command.getValue());
+        ObservedValue value = observedValueMapper.map(command.getValue());
 
         modelChangeExecutor.execute(new ChangePropertyValueRunnable(prop.get(), value));
     }
@@ -91,9 +91,9 @@ public class SetPropertyValueExecutor implements CommandExecutor<SetPropertyValu
     private class ChangePropertyValueRunnable implements Runnable {
 
         private Property prop;
-        private PropertyValue value;
+        private ObservedValue value;
 
-        ChangePropertyValueRunnable(final Property prop, final PropertyValue value) {
+        ChangePropertyValueRunnable(final Property prop, final ObservedValue value) {
             this.prop = prop;
             this.value = value;
         }

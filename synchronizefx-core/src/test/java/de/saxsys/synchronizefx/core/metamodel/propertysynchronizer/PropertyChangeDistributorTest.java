@@ -23,11 +23,11 @@ import java.util.UUID;
 
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.CommandDistributor;
+import de.saxsys.synchronizefx.core.metamodel.ObservedValue;
+import de.saxsys.synchronizefx.core.metamodel.ObservedValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.Optional;
 import de.saxsys.synchronizefx.core.metamodel.Property;
 import de.saxsys.synchronizefx.core.metamodel.PropertyRegistry;
-import de.saxsys.synchronizefx.core.metamodel.PropertyValue;
-import de.saxsys.synchronizefx.core.metamodel.PropertyValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.TopologyLayerCallback;
 import de.saxsys.synchronizefx.core.metamodel.commands.Command;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
@@ -54,11 +54,11 @@ public class PropertyChangeDistributorTest {
     private static final UUID EXAMPLE_UUID = UUID.randomUUID();
 
     private Property exampleProperty;
-    private PropertyValue examplePropertyValue;
+    private ObservedValue examplePropertyValue;
     private Value exampleValueMassage;
     
     private TopologyLayerCallback topology;
-    private PropertyValueMapper propertyValueMapper;
+    private ObservedValueMapper observedValueMapper;
     private PropertyRegistry propertyRegistry;
     private CommandDistributor commandDistributor;
 
@@ -69,12 +69,12 @@ public class PropertyChangeDistributorTest {
      */
     @Before
     public void setUpClassToTestAndDependencies() {
-        propertyValueMapper = mock(PropertyValueMapper.class);
+        observedValueMapper = mock(ObservedValueMapper.class);
         propertyRegistry = mock(PropertyRegistry.class);
         commandDistributor = mock(CommandDistributor.class);
         topology = mock(TopologyLayerCallback.class);
 
-        changeDistributor = new PropertyChangeDistributor(propertyValueMapper, propertyRegistry, commandDistributor,
+        changeDistributor = new PropertyChangeDistributor(observedValueMapper, propertyRegistry, commandDistributor,
                 topology);
     }
 
@@ -83,7 +83,7 @@ public class PropertyChangeDistributorTest {
      */
     @Before
     public void setUpTestData() {
-        examplePropertyValue = mock(PropertyValue.class);
+        examplePropertyValue = mock(ObservedValue.class);
         exampleProperty = mock(Property.class);
         when(exampleProperty.getValue()).thenReturn(examplePropertyValue);
         
@@ -97,7 +97,7 @@ public class PropertyChangeDistributorTest {
     @Test
     public void shouldDistributeTheValueOfAPropertyToOtherPeers() {
         when(propertyRegistry.idFor(exampleProperty)).thenReturn(Optional.of(EXAMPLE_UUID));
-        when(propertyValueMapper.map(examplePropertyValue)).thenReturn(exampleValueMassage);
+        when(observedValueMapper.map(examplePropertyValue)).thenReturn(exampleValueMassage);
         
         changeDistributor.onChange(exampleProperty);
         

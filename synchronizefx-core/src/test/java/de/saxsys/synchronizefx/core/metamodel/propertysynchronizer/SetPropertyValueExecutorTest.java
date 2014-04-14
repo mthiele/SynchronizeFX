@@ -23,12 +23,12 @@ import java.util.UUID;
 
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.ModelChangeExecutor;
+import de.saxsys.synchronizefx.core.metamodel.ObservedValue;
+import de.saxsys.synchronizefx.core.metamodel.ObservedValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.Optional;
 import de.saxsys.synchronizefx.core.metamodel.Property;
 import de.saxsys.synchronizefx.core.metamodel.PropertyChangeNotificationDisabler;
 import de.saxsys.synchronizefx.core.metamodel.PropertyRegistry;
-import de.saxsys.synchronizefx.core.metamodel.PropertyValue;
-import de.saxsys.synchronizefx.core.metamodel.PropertyValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.TopologyLayerCallback;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 import de.saxsys.synchronizefx.core.metamodel.commands.Value;
@@ -51,17 +51,17 @@ public class SetPropertyValueExecutorTest {
     private static final Object NEW_VALUE = "new value";
 
     private final PropertyRegistry propertyRegistry = mock(PropertyRegistry.class);
-    private final PropertyValueMapper propertyValueMapper = mock(PropertyValueMapper.class);
+    private final ObservedValueMapper observedValueMapper = mock(ObservedValueMapper.class);
     private final PropertyChangeNotificationDisabler notificationDisabler
         = mock(PropertyChangeNotificationDisabler.class);
     private final DelayedgModelChangeExecutor modelChangeExecutor = new DelayedgModelChangeExecutor();
     private final TopologyLayerCallback topology = mock(TopologyLayerCallback.class);
 
     private final SetPropertyValueExecutor commandExecutor = new SetPropertyValueExecutor(propertyRegistry,
-            propertyValueMapper, notificationDisabler, modelChangeExecutor, topology);
+            observedValueMapper, notificationDisabler, modelChangeExecutor, topology);
 
     private Property propertyToChange;
-    private PropertyValue newPropertyValue;
+    private ObservedValue newPropertyValue;
     private SetPropertyValue changePropertyValueCommand;
 
     /**
@@ -72,9 +72,9 @@ public class SetPropertyValueExecutorTest {
         propertyToChange = mock(Property.class);
         when(propertyRegistry.getById(KNOWN_PROPERTY)).thenReturn(Optional.of(propertyToChange));
 
-        newPropertyValue = mock(PropertyValue.class);
-        Value newValue = new ValueBuilder().simpleObjectValue(NEW_VALUE).build();
-        when(propertyValueMapper.map(newValue)).thenReturn(newPropertyValue);
+        newPropertyValue = mock(ObservedValue.class);
+        Value newValue = new ValueBuilder().withSimpleObject(NEW_VALUE).build();
+        when(observedValueMapper.map(newValue)).thenReturn(newPropertyValue);
 
         changePropertyValueCommand = new SetPropertyValueBuilder().propertyId(KNOWN_PROPERTY).value(newValue).build();
     }
@@ -114,7 +114,7 @@ public class SetPropertyValueExecutorTest {
         InOrder inOrder = inOrder(notificationDisabler, propertyToChange);
 
         inOrder.verify(notificationDisabler).disableFor(propertyToChange);
-        inOrder.verify(propertyToChange).setValue(any(PropertyValue.class));
+        inOrder.verify(propertyToChange).setValue(any(ObservedValue.class));
         inOrder.verify(notificationDisabler).enableFor(propertyToChange);
     }
 

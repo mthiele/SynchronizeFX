@@ -85,17 +85,17 @@ public class SyncSetPropertyTest {
     public void testAdd() {
         root.set.add("some string");
         AddToSet msg1 = (AddToSet) cb.getCommands().get(0);
-        assertNotNull(msg1.getListId());
-        assertNull(msg1.getObservableObjectId());
-        assertEquals("some string", msg1.getSimpleObjectValue());
+        assertNotNull(msg1.getSetId());
+        assertNull(msg1.getValue().getObservableObjectId());
+        assertEquals("some string", msg1.getValue().getSimpleObjectValue());
 
         root.childSet.add(new Child());
         CreateObservableObject msg2 = (CreateObservableObject) cb.getCommands().get(0);
         AddToSet msg3 = (AddToSet) cb.getCommands().get(2);
         assertEquals(Child.class.getName(), msg2.getClassName());
-        assertNotNull(msg3.getListId());
-        assertNotNull(msg3.getObservableObjectId());
-        assertNull(msg3.getSimpleObjectValue());
+        assertNotNull(msg3.getSetId());
+        assertNotNull(msg3.getValue().getObservableObjectId());
+        assertNull(msg3.getValue().getSimpleObjectValue());
     }
 
     /**

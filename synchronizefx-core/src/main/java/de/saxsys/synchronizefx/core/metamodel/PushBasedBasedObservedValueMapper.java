@@ -25,10 +25,10 @@ import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.commands.Value;
 
 /**
- * Maps and creates commands to {@link PropertyValue} and vice versa pushing all unknown {@link Observable}s to other
+ * Maps and creates commands to {@link ObservedValue} and vice versa pushing all unknown {@link Observable}s to other
  * peers.
  */
-class PushBasedBasedPropertyValueMapper implements PropertyValueMapper {
+class PushBasedBasedObservedValueMapper implements ObservedValueMapper {
 
     private final ObservableObjectRegistry mapper;
     private final TopologyLayerCallback topology;
@@ -44,7 +44,7 @@ class PushBasedBasedPropertyValueMapper implements PropertyValueMapper {
      * @param observableObjectDistributor
      *            used to inform other peers of new observable objects.
      */
-    public PushBasedBasedPropertyValueMapper(final ObservableObjectRegistry mapper,
+    public PushBasedBasedObservedValueMapper(final ObservableObjectRegistry mapper,
             final TopologyLayerCallback topology, final ObservableObjectDistributor observableObjectDistributor) {
         this.topology = topology;
         this.mapper = mapper;
@@ -52,7 +52,7 @@ class PushBasedBasedPropertyValueMapper implements PropertyValueMapper {
     }
 
     @Override
-    public PropertyValue map(final Value message) {
+    public ObservedValue map(final Value message) {
         final UUID valueId = message.getObservableObjectId();
         if (valueId != null) {
             Optional<Object> value = mapper.getById(valueId);
@@ -69,7 +69,7 @@ class PushBasedBasedPropertyValueMapper implements PropertyValueMapper {
     }
 
     @Override
-    public Value map(final PropertyValue value) {
+    public Value map(final ObservedValue value) {
         Value valueMessage = new Value();
         if (!value.isObservable()) {
             valueMessage.setSimpleObjectValue(value.value());
