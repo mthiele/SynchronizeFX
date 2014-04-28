@@ -103,7 +103,7 @@ public class SetPropertyValueExecutorTest {
 
         verify(observableChanger).silentlyModifyObservable(any(Property.class), any(Runnable.class));
 
-        // change runnable should not be executed when the SilentObservableChanger has not executed it. 
+        // The change should not have been executed when the SilentObservableChanger has not executed it. 
         verifyNoMoreInteractions(propertyToChange);
     }
 

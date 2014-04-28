@@ -21,27 +21,30 @@ package de.saxsys.synchronizefx.core.metamodel.setsynchronizer;
 
 import java.util.UUID;
 
-import de.saxsys.synchronizefx.core.metamodel.ModelChangeExecutor;
+import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.ObservableSet;
 import de.saxsys.synchronizefx.core.metamodel.ObservableSetRegistry;
 import de.saxsys.synchronizefx.core.metamodel.ObservedValue;
 import de.saxsys.synchronizefx.core.metamodel.ObservedValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.Optional;
+import de.saxsys.synchronizefx.core.metamodel.SilentObservableChanger;
+import de.saxsys.synchronizefx.core.metamodel.TopologyLayerCallback;
 import de.saxsys.synchronizefx.core.metamodel.commands.AddToSet;
 import de.saxsys.synchronizefx.core.metamodel.commands.Value;
 import static de.saxsys.synchronizefx.core.metamodel.commands.builders.AddToSetBuilder.addToSetCommand;
 import static de.saxsys.synchronizefx.core.metamodel.commands.builders.ValueBuilder.valueMessage;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -51,17 +54,22 @@ import static org.mockito.Mockito.when;
 public class AddToSetExecutorTest {
 
     private static final UUID EXAPMLE_OBSERVABLE_SET_ID = UUID.randomUUID();
+    private static final UUID UNKNOWN_OBSERVABLE_SET_ID = UUID.randomUUID();
     private static final Object EXAMPLE_SIMPLE_VALUE = "example value";
 
     private static final Value EXAMPLE_VALUE = valueMessage().withSimpleObject(EXAMPLE_SIMPLE_VALUE).build();
-    private static final AddToSet EXAMPLE_ADD_TO_SET_COMMAND = addToSetCommand().withSetId(EXAPMLE_OBSERVABLE_SET_ID)
-            .withValue(EXAMPLE_VALUE).build();
 
     @Mock
     private ObservedValueMapper observedValueMapper;
 
     @Mock
     private ObservableSetRegistry observableSetRegistry;
+
+    @Mock
+    private SilentObservableChanger observableChanger;
+
+    @Mock
+    private TopologyLayerCallback topology;
 
     @InjectMocks
     private AddToSetExecutor classToTest;
@@ -85,18 +93,13 @@ public class AddToSetExecutorTest {
      */
     @Test
     public void shouldAddAValueToASet() {
-        classToTest.execute(EXAMPLE_ADD_TO_SET_COMMAND);
+        classToTest.execute(addToSetCommand().withSetId(EXAPMLE_OBSERVABLE_SET_ID).withValue(EXAMPLE_VALUE).build());
+
+        ArgumentCaptor<Runnable> changeRunnable = ArgumentCaptor.forClass(Runnable.class);
+        verify(observableChanger).silentlyModifyObservable(any(ObservableSet.class), changeRunnable.capture());
+        changeRunnable.getValue().run();
 
         verify(exampleObservableSet).add(exampleValue);
-    }
-
-    /**
-     * All changes to the users domain model must be done via an {@link ModelChangeExecutor}.
-     */
-    @Test
-    @Ignore("not implemented yet")
-    public void shouldDoChangesToTheModelOnlyViaTheModelChangeExecutor() {
-        fail("not implemented yet");
     }
 
     /**
@@ -104,9 +107,12 @@ public class AddToSetExecutorTest {
      * {@link ObservableSetRegistry}, the executor should fail.
      */
     @Test
-    @Ignore("not implemented yet")
     public void shouldFailIfSetWithIdWasNotFound() {
-        fail("not implemented yet");
+        when(observableSetRegistry.getById(UNKNOWN_OBSERVABLE_SET_ID)).thenReturn(Optional.<ObservableSet> empty());
+
+        classToTest.execute(addToSetCommand().withSetId(UNKNOWN_OBSERVABLE_SET_ID).build());
+
+        verify(topology).onError(any(SynchronizeFXException.class));
     }
 
     /**
@@ -114,8 +120,12 @@ public class AddToSetExecutorTest {
      * notification for an {@link ObservableSet} before doing changes and re-enable it afterwards.
      */
     @Test
-    @Ignore("not implemented yet")
     public void shouldDisableAndReanableChangeNotificationWhenAddingToSet() {
-        fail("not implemented yet");
+        classToTest.execute(addToSetCommand().withSetId(EXAPMLE_OBSERVABLE_SET_ID).withValue(EXAMPLE_VALUE).build());
+
+        verify(observableChanger).silentlyModifyObservable(any(ObservableSet.class), any(Runnable.class));
+
+        // the change should not have been executed when the SilentObservableChanger has not executed it.
+        verifyNoMoreInteractions(exampleObservableSet);
     }
 }
