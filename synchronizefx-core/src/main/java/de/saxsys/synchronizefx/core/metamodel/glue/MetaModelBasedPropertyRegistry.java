@@ -27,6 +27,7 @@ import de.saxsys.synchronizefx.core.metamodel.Optional;
 import de.saxsys.synchronizefx.core.metamodel.Property;
 import de.saxsys.synchronizefx.core.metamodel.PropertyRegistry;
 import de.saxsys.synchronizefx.core.metamodel.javafx.JfxProperty;
+import de.saxsys.synchronizefx.core.metamodel.javafx.JfxPropertyChangeNotifier;
 
 /**
  * A temporary {@link PropertyRegistry} implementation that manages registered properties based on a {@link MetaModel}.
@@ -38,16 +39,20 @@ import de.saxsys.synchronizefx.core.metamodel.javafx.JfxProperty;
  */
 public class MetaModelBasedPropertyRegistry implements PropertyRegistry {
 
-    private MetaModel metaModel;
+    private final MetaModel metaModel;
+    private final JfxPropertyChangeNotifier changeNotifier;
 
     /**
      * Initializes an instance with all it's dependencies.
      * 
      * @param metaModel
      *            the meta model to use.
+     * @param changeNotifier
+     *            a dependency of created {@link JfxProperty}s.
      */
-    public MetaModelBasedPropertyRegistry(final MetaModel metaModel) {
+    public MetaModelBasedPropertyRegistry(final MetaModel metaModel, final JfxPropertyChangeNotifier changeNotifier) {
         this.metaModel = metaModel;
+        this.changeNotifier = changeNotifier;
     }
 
     @Override
@@ -56,7 +61,7 @@ public class MetaModelBasedPropertyRegistry implements PropertyRegistry {
         if (property == null) {
             return Optional.empty();
         }
-        return Optional.<Property> of(new JfxProperty(property));
+        return Optional.<Property> of(new JfxProperty(property, changeNotifier));
     }
 
     @Override

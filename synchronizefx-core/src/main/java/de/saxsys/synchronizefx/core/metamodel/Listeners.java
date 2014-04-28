@@ -42,7 +42,7 @@ import javafx.collections.WeakSetChangeListener;
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.ModelWalkingSynchronizer.ActionType;
 import de.saxsys.synchronizefx.core.metamodel.javafx.JfxProperty;
-import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.PropertyChangeDistributor;
+import de.saxsys.synchronizefx.core.metamodel.javafx.JfxPropertyChangeNotifier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,15 +61,13 @@ public class Listeners implements ListChangeListener<Object>, SetChangeListener<
     private final CommandListCreator creator;
     private final TopologyLayerCallback topology;
     private final ModelWalkingSynchronizer synchronizer;
+    private final JfxPropertyChangeNotifier propertyChangeNotifier;
 
     private final WeakListChangeListener<Object> listListener = new WeakListChangeListener<>(this);
     private final WeakSetChangeListener<Object> setListener = new WeakSetChangeListener<>(this);
     private final WeakMapChangeListener<Object, Object> mapListener = new WeakMapChangeListener<>(this);
 
     private final Map<Object, Object> disabledFor = new IdentityHashMap<>();
-
-    private final PropertyChangeDistributor propertyChangeDistributor;
-    private final PropertyChangeNotificationDisabler jfxPropertyChangeListener;
 
     /**
      * Initializes the Listeners.
@@ -78,18 +76,16 @@ public class Listeners implements ListChangeListener<Object>, SetChangeListener<
      * @param creator The creator to use for command creation.
      * @param topology The user callback to use when errors occur.
      * @param synchronizer The model walking locker to block user threads as long as a model walking process is active.
-     * @param propertyChangeDistributor used to report changes on properties
+     * @param propertyChangeNotifier used to create {@link JfxProperty}s.
      */
     public Listeners(final MetaModel parent, final CommandListCreator creator, final TopologyLayerCallback topology,
-            final ModelWalkingSynchronizer synchronizer, final PropertyChangeDistributor propertyChangeDistributor,
-            final PropertyChangeNotificationDisabler jfxPropertyChangeListener) {
+            final ModelWalkingSynchronizer synchronizer, final JfxPropertyChangeNotifier propertyChangeNotifier) {
         this.parent = parent;
         this.creator = creator;
         this.topology = topology;
         this.synchronizer = synchronizer;
         
-        this.propertyChangeDistributor = propertyChangeDistributor;
-        this.jfxPropertyChangeListener = jfxPropertyChangeListener;
+        this.propertyChangeNotifier = propertyChangeNotifier;
     }
 
     /**
@@ -101,11 +97,12 @@ public class Listeners implements ListChangeListener<Object>, SetChangeListener<
         try {
             // the removeListener() call ensures that the listener is not added more than once
             new PropertyVisitor(object) {
+
                 @Override
                 protected boolean visitSingleValueProperty(final Property<?> fieldValue) {
-                    JfxProperty property = new JfxProperty((Property<Object>) fieldValue);
-                    jfxPropertyChangeListener.disableFor(property);
-                    jfxPropertyChangeListener.enableFor(property);
+                    JfxProperty property = new JfxProperty((Property<Object>) fieldValue, propertyChangeNotifier);
+                    property.disableChangeNotification();
+                    property.reEnableChangeNotification();
                     return true;
                 }
 

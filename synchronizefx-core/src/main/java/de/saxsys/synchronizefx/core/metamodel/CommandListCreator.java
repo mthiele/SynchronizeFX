@@ -34,7 +34,6 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.MapProperty;
 import javafx.beans.property.Property;
 import javafx.beans.property.SetProperty;
-
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.ModelWalkingSynchronizer.ActionType;
 import de.saxsys.synchronizefx.core.metamodel.commands.AddToList;
@@ -50,6 +49,7 @@ import de.saxsys.synchronizefx.core.metamodel.commands.Value;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedCommandDistributor;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModleBasedObservableObjectDistributor;
 import de.saxsys.synchronizefx.core.metamodel.javafx.JfxProperty;
+import de.saxsys.synchronizefx.core.metamodel.javafx.JfxPropertyChangeNotifier;
 import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.PropertyChangeDistributor;
 
 /**
@@ -64,6 +64,7 @@ public class CommandListCreator {
     private final MetaModelBasedCommandDistributor commandDistributor;
     private final MetaModleBasedObservableObjectDistributor observableObjectDistributor;
     private final ModelWalkingSynchronizer synchronizer;
+    private final JfxPropertyChangeNotifier propertyChangeNotifier;
 
     /**
      * Initializes the creator.
@@ -78,7 +79,8 @@ public class CommandListCreator {
             final PropertyChangeDistributor propertyChangeDistributor,
             final MetaModelBasedCommandDistributor commandDistributor,
             final MetaModleBasedObservableObjectDistributor observableObjectDistributor,
-            final ModelWalkingSynchronizer synchronizer) {
+            final ModelWalkingSynchronizer synchronizer,
+            final JfxPropertyChangeNotifier propertyChangeNotifier) {
         this.parent = parent;
         this.topology = topology;
 
@@ -86,8 +88,7 @@ public class CommandListCreator {
         this.commandDistributor = commandDistributor;
         this.observableObjectDistributor = observableObjectDistributor;
         this.synchronizer = synchronizer;
-        commandDistributor.setCommandListCreator(this);
-        observableObjectDistributor.setCreator(this);
+        this.propertyChangeNotifier = propertyChangeNotifier;
     }
 
     /**
@@ -347,11 +348,12 @@ public class CommandListCreator {
 
         try {
             new PropertyVisitor(value) {
+
                 @Override
                 protected boolean visitSingleValueProperty(final Property<?> fieldValue) {
                     registerPropertyAndParent(getCurrentField(), fieldValue);
                     createObservableObject(fieldValue.getValue(), state);
-                    propertyChangeDistributor.onChange(new JfxProperty((Property<Object>) fieldValue));
+                    propertyChangeDistributor.onChange(new JfxProperty((Property<Object>) fieldValue, propertyChangeNotifier));
                     return false;
                 }
 

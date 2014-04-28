@@ -23,13 +23,12 @@ import java.util.UUID;
 
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
 import de.saxsys.synchronizefx.core.metamodel.CommandExecutor;
-import de.saxsys.synchronizefx.core.metamodel.ModelChangeExecutor;
 import de.saxsys.synchronizefx.core.metamodel.ObservedValue;
 import de.saxsys.synchronizefx.core.metamodel.ObservedValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.Optional;
 import de.saxsys.synchronizefx.core.metamodel.Property;
-import de.saxsys.synchronizefx.core.metamodel.PropertyChangeNotificationDisabler;
 import de.saxsys.synchronizefx.core.metamodel.PropertyRegistry;
+import de.saxsys.synchronizefx.core.metamodel.SilentObservableChanger;
 import de.saxsys.synchronizefx.core.metamodel.TopologyLayerCallback;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 
@@ -39,8 +38,7 @@ import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 public class SetPropertyValueExecutor implements CommandExecutor<SetPropertyValue> {
 
     private final TopologyLayerCallback topology;
-    private final ModelChangeExecutor modelChangeExecutor;
-    private final PropertyChangeNotificationDisabler notificationDisabler;
+    private final SilentObservableChanger observableChanger;
 
     private final PropertyRegistry propertyMapper;
     private final ObservedValueMapper observedValueMapper;
@@ -53,22 +51,18 @@ public class SetPropertyValueExecutor implements CommandExecutor<SetPropertyValu
      * @param observedValueMapper
      *            used to map {@link de.saxsys.synchronizefx.core.metamodel.commands.Value} messages to
      *            {@link ObservedValue} instances
+     * @param observableChanger
+     *            used to disable change notification for changes done by this class to the users domain model.
      * @param topology
      *            used to inform the next layer of errors.
-     * @param notificationDisabler
-     *            used to temporary disable change notification for {@link Property}s this executor is changing.
-     * @param executor
-     *            used to execute changes on the domain model of the user.
      */
     public SetPropertyValueExecutor(final PropertyRegistry propertyMapper,
-            final ObservedValueMapper observedValueMapper,
-            final PropertyChangeNotificationDisabler notificationDisabler, final ModelChangeExecutor executor,
+            final ObservedValueMapper observedValueMapper, final SilentObservableChanger observableChanger,
             final TopologyLayerCallback topology) {
         this.propertyMapper = propertyMapper;
         this.observedValueMapper = observedValueMapper;
+        this.observableChanger = observableChanger;
         this.topology = topology;
-        this.notificationDisabler = notificationDisabler;
-        this.modelChangeExecutor = executor;
     }
 
     @Override
@@ -80,29 +74,13 @@ public class SetPropertyValueExecutor implements CommandExecutor<SetPropertyValu
             return;
         }
 
-        ObservedValue value = observedValueMapper.map(command.getValue());
+        final ObservedValue value = observedValueMapper.map(command.getValue());
 
-        modelChangeExecutor.execute(new ChangePropertyValueRunnable(prop.get(), value));
-    }
-
-    /**
-     * Ensures that he change notifier do not fire while a change to a property is done.
-     */
-    private class ChangePropertyValueRunnable implements Runnable {
-
-        private Property prop;
-        private ObservedValue value;
-
-        ChangePropertyValueRunnable(final Property prop, final ObservedValue value) {
-            this.prop = prop;
-            this.value = value;
-        }
-
-        @Override
-        public void run() {
-            notificationDisabler.disableFor(prop);
-            prop.setValue(value);
-            notificationDisabler.enableFor(prop);
-        }
+        observableChanger.silentlyModifyObservable(prop.get(), new Runnable() {
+            @Override
+            public void run() {
+                prop.get().setValue(value);
+            }
+        });
     }
 }

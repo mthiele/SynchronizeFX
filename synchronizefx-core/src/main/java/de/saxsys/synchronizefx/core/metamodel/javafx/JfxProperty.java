@@ -29,17 +29,23 @@ import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedPropertyValue;
  */
 public class JfxProperty implements de.saxsys.synchronizefx.core.metamodel.Property {
 
+    private final JfxPropertyChangeNotifier changeNotifier;
+
     private final Property<Object> property;
-    
+
     /**
      * Initializes a new instance.
      * 
-     * @param property the JavaFX property to wrap.
+     * @param property
+     *            the JavaFX property to wrap.
+     * @param changeNotifier
+     *            used to inform listeners on changes of a property.
      */
-    public JfxProperty(final Property<Object> property) {
+    public JfxProperty(final Property<Object> property, final JfxPropertyChangeNotifier changeNotifier) {
         this.property = property;
+        this.changeNotifier = changeNotifier;
     }
-    
+
     /**
      * The JavaFX property that is wrapped.
      * 
@@ -57,5 +63,16 @@ public class JfxProperty implements de.saxsys.synchronizefx.core.metamodel.Prope
     @Override
     public ObservedValue getValue() {
         return new MetaModelBasedPropertyValue(property.getValue());
+    }
+
+    @Override
+    public void disableChangeNotification() {
+        property.removeListener(changeNotifier.getWeakReference());
+    }
+
+    @Override
+    public void reEnableChangeNotification() {
+        disableChangeNotification();
+        property.addListener(changeNotifier.getWeakReference());
     }
 }

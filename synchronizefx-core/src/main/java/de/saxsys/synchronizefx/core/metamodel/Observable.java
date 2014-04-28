@@ -20,8 +20,21 @@
 package de.saxsys.synchronizefx.core.metamodel;
 
 /**
- * A marker interface for instances that contain changeable values that can be observed.
+ * A wrapper for changeable values that can be observed for changes.
  */
 public interface Observable {
 
+    /**
+     * Disable the change notification for any change done to the values of this {@link Observable}.
+     */
+    void disableChangeNotification();
+
+    /**
+     * Re-Enables change notification for any change done to the values of this {@link Observable}.
+     * 
+     * <p>
+     * As long as {@link #disableChangeNotification()} has not been called, change notification is enabled by default.
+     * </p>
+     */
+    void reEnableChangeNotification();
 }

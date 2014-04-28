@@ -26,8 +26,6 @@ import javafx.beans.value.WeakChangeListener;
 import de.saxsys.synchronizefx.core.metamodel.CommandListCreator;
 import de.saxsys.synchronizefx.core.metamodel.CommandListCreator.State;
 import de.saxsys.synchronizefx.core.metamodel.CommandListCreator.WithCommandType;
-import de.saxsys.synchronizefx.core.metamodel.Property;
-import de.saxsys.synchronizefx.core.metamodel.PropertyChangeNotificationDisabler;
 import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.PropertyChangeDistributor;
 
 /**
@@ -36,55 +34,42 @@ import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.PropertyChang
  * 
  * @author Raik Bieniek <raik.bieniek@saxsys.de>
  */
-public class JfxPropertyChangeNotifier implements PropertyChangeNotificationDisabler {
+public class JfxPropertyChangeNotifier implements ChangeListener<Object> {
 
-    private final PropertyChangeDistributor distributor;
+    private PropertyChangeDistributor distributor;
     // FIXME this should only be a temporary dependency
-    private final CommandListCreator creator;
+    private  CommandListCreator creator;
 
-    private final JfxPropertyChangeListener strongReferencedPropertyListener = new JfxPropertyChangeListener();
-    private final WeakChangeListener<Object> propertyListener
-        = new WeakChangeListener<>(strongReferencedPropertyListener);
+    private final WeakChangeListener<Object> weakReference = new WeakChangeListener<>(this);
 
-    public JfxPropertyChangeNotifier(final PropertyChangeDistributor distributor, final CommandListCreator creator) {
-        this.distributor = distributor;
+    // FIXME a temporary hack to work around cyclic dependencies
+    public void setCreator(final CommandListCreator creator) {
         this.creator = creator;
     }
 
-    @Override
-    public void disableFor(final Property property) {
-        cast(property).getJfxProperty().removeListener(propertyListener);
+    // FIXME a temporary hack to work around cyclic dependencies
+    public void setPropertyChangeDistributor(final PropertyChangeDistributor distributor) {
+        this.distributor = distributor;
     }
 
     @Override
-    public void enableFor(final Property property) {
-        cast(property).getJfxProperty().addListener(propertyListener);
-    }
-
-    private JfxProperty cast(final Property property) {
-        return (JfxProperty) property;
-    }
-
-    @SuppressWarnings("unchecked")
-    private javafx.beans.property.Property<Object> cast(final ObservableValue<? extends Object> observableValue) {
-        // this listener is only registered on Property so casting will never fail.
-        return (javafx.beans.property.Property<Object>) observableValue;
+    public void changed(final ObservableValue<? extends Object> property, final Object oldValue, final Object newValue) {
+        creator.distributeCommands(creator.createCommandList(new WithCommandType() {
+            @Override
+            public void invoke(final State state) {
+                // FIXME this should be executed directly when CreatCommandList is factored out.
+                distributor.onChange(new JfxProperty((javafx.beans.property.Property<Object>) property,
+                        JfxPropertyChangeNotifier.this));
+            }
+        }, true).getCommands());
     }
 
     /**
-     * The JavaFX listener that notifies the change distributor of changes.
+     * A weakly referenced version of this change notifier.
+     * 
+     * @return the weak reference
      */
-    private class JfxPropertyChangeListener implements ChangeListener<Object> {
-        @Override
-        public void changed(final ObservableValue<? extends Object> property, final Object oldValue,
-                final Object newValue) {
-            creator.distributeCommands(creator.createCommandList(new WithCommandType() {
-                @Override
-                public void invoke(final State state) {
-                    // FIXME this should be executed directly when CreatCommandList is factored out.
-                    distributor.onChange(new JfxProperty(cast(property)));
-                }
-            }, true).getCommands());
-        }
+    public WeakChangeListener<Object> getWeakReference() {
+        return weakReference;
     }
 }

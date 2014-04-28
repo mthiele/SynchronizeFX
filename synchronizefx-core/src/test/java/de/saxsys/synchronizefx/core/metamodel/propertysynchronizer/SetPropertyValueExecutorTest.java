@@ -22,13 +22,12 @@ package de.saxsys.synchronizefx.core.metamodel.propertysynchronizer;
 import java.util.UUID;
 
 import de.saxsys.synchronizefx.core.exceptions.SynchronizeFXException;
-import de.saxsys.synchronizefx.core.metamodel.ModelChangeExecutor;
 import de.saxsys.synchronizefx.core.metamodel.ObservedValue;
 import de.saxsys.synchronizefx.core.metamodel.ObservedValueMapper;
 import de.saxsys.synchronizefx.core.metamodel.Optional;
 import de.saxsys.synchronizefx.core.metamodel.Property;
-import de.saxsys.synchronizefx.core.metamodel.PropertyChangeNotificationDisabler;
 import de.saxsys.synchronizefx.core.metamodel.PropertyRegistry;
+import de.saxsys.synchronizefx.core.metamodel.SilentObservableChanger;
 import de.saxsys.synchronizefx.core.metamodel.TopologyLayerCallback;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 import de.saxsys.synchronizefx.core.metamodel.commands.Value;
@@ -37,9 +36,13 @@ import de.saxsys.synchronizefx.core.metamodel.commands.builders.ValueBuilder;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.InOrder;
+import org.mockito.ArgumentCaptor;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests if {@link SetPropertyValueExecutor} works as expected.
@@ -52,16 +55,15 @@ public class SetPropertyValueExecutorTest {
 
     private final PropertyRegistry propertyRegistry = mock(PropertyRegistry.class);
     private final ObservedValueMapper observedValueMapper = mock(ObservedValueMapper.class);
-    private final PropertyChangeNotificationDisabler notificationDisabler
-        = mock(PropertyChangeNotificationDisabler.class);
-    private final DelayedgModelChangeExecutor modelChangeExecutor = new DelayedgModelChangeExecutor();
+    private final SilentObservableChanger observableChanger = mock(SilentObservableChanger.class);
     private final TopologyLayerCallback topology = mock(TopologyLayerCallback.class);
 
     private final SetPropertyValueExecutor commandExecutor = new SetPropertyValueExecutor(propertyRegistry,
-            observedValueMapper, notificationDisabler, modelChangeExecutor, topology);
+            observedValueMapper, observableChanger, topology);
 
-    private Property propertyToChange;
-    private ObservedValue newPropertyValue;
+    private final Property propertyToChange = mock(Property.class);
+    private final ObservedValue newPropertyValue = mock(ObservedValue.class);
+    
     private SetPropertyValue changePropertyValueCommand;
 
     /**
@@ -69,10 +71,8 @@ public class SetPropertyValueExecutorTest {
      */
     @Before
     public void setUpTestData() {
-        propertyToChange = mock(Property.class);
         when(propertyRegistry.getById(KNOWN_PROPERTY)).thenReturn(Optional.of(propertyToChange));
 
-        newPropertyValue = mock(ObservedValue.class);
         Value newValue = new ValueBuilder().withSimpleObject(NEW_VALUE).build();
         when(observedValueMapper.map(newValue)).thenReturn(newPropertyValue);
 
@@ -85,41 +85,30 @@ public class SetPropertyValueExecutorTest {
     @Test
     public void shouldChangeTheValueOfAProperty() {
         commandExecutor.apply(changePropertyValueCommand);
-
-        modelChangeExecutor.executeLast();
+        
+        ArgumentCaptor<Runnable> changeRunnable = ArgumentCaptor.forClass(Runnable.class);
+        verify(observableChanger).silentlyModifyObservable(any(Property.class), changeRunnable.capture());
+        changeRunnable.getValue().run();
 
         verify(propertyToChange).setValue(newPropertyValue);
     }
 
     /**
-     * All changes to the domain model of the user must be done via the {@link ModelChangeExecutor}.
+     * All changes done to the properties in the users domain model must not be signalized to the change message
+     * generator of SynchronizeFX.
      */
     @Test
-    public void shouldModifyThePropertyOnlyViaTheModelChangeExecutor() {
+    public void shouldChangeTheDomainModelOfTheUserWithoutNotifingTheListeners() {
         commandExecutor.apply(changePropertyValueCommand);
 
-        // if the ModelChangeExecutor does not execute the changes, the users domain model should remain unchanged.
+        verify(observableChanger).silentlyModifyObservable(any(Property.class), any(Runnable.class));
+
+        // change runnable should not be executed when the SilentObservableChanger has not executed it. 
         verifyNoMoreInteractions(propertyToChange);
     }
 
     /**
-     * The change to the domain model should not be propagated to the synchronizeFX specific listeners that generate
-     * change commands.
-     */
-    @Test
-    public void shouldDisableAndReanableChangeNotificationWhenChangingThePropertyValue() {
-        commandExecutor.apply(changePropertyValueCommand);
-        modelChangeExecutor.executeLast();
-
-        InOrder inOrder = inOrder(notificationDisabler, propertyToChange);
-
-        inOrder.verify(notificationDisabler).disableFor(propertyToChange);
-        inOrder.verify(propertyToChange).setValue(any(ObservedValue.class));
-        inOrder.verify(notificationDisabler).enableFor(propertyToChange);
-    }
-
-    /**
-     * When a change message with a property id unknown to the property registry is recived the class should send an
+     * When a change message with a property id unknown to the property registry is received the class should send an
      * error to the user and should not do any changes to the domain model.
      */
     @Test
@@ -129,25 +118,5 @@ public class SetPropertyValueExecutorTest {
         commandExecutor.apply(new SetPropertyValueBuilder().propertyId(UNKNOWN_PROPERTY).build());
 
         verify(topology).onError(any(SynchronizeFXException.class));
-    }
-
-    /**
-     * Stores the last {@link Runnable} that was passed and executes when required.
-     */
-    private static class DelayedgModelChangeExecutor implements ModelChangeExecutor {
-
-        private Runnable runnable;
-
-        @Override
-        public void execute(final Runnable runnable) {
-            this.runnable = runnable;
-        }
-
-        /**
-         * Executes the last {@link Runnable} that was passed to {@link #execute(Runnable)}.
-         */
-        public void executeLast() {
-            runnable.run();
-        }
     }
 }

@@ -73,10 +73,9 @@ public class MetaModel {
         this.topology = topology;
 
         this.modelWalkingSynchronizer = new ModelWalkingSynchronizer();
-
+        
         final ObservableObjectRegistry observableObjectRegistry = new MetaModelBasedObservableObjectRegistry(this);
         final ModelChangeExecutor modelChangeExecutor = new MetaModelBasedModelChangeExecutor(this);
-        final PropertyRegistry propertyRegistry = new MetaModelBasedPropertyRegistry(this);
         final MetaModelBasedCommandDistributor commandDistributor = new MetaModelBasedCommandDistributor(topology);
         final MetaModleBasedObservableObjectDistributor observableObjectDistributor =
                 new MetaModleBasedObservableObjectDistributor(this);
@@ -84,21 +83,27 @@ public class MetaModel {
         final PushBasedBasedObservedValueMapper propertyValueMapper = new PushBasedBasedObservedValueMapper(
                 observableObjectRegistry, topology, observableObjectDistributor);
 
+
+        final JfxPropertyChangeNotifier propertyChangeNotifier = new JfxPropertyChangeNotifier();
+        final PropertyRegistry propertyRegistry = new MetaModelBasedPropertyRegistry(this, propertyChangeNotifier);
+        
         final PropertyChangeDistributor propertyChangeDistributor = new PropertyChangeDistributor(propertyValueMapper,
                 propertyRegistry, commandDistributor, topology);
 
         this.creator = new CommandListCreator(this, topology, propertyChangeDistributor, commandDistributor,
-                observableObjectDistributor, modelWalkingSynchronizer);
+                observableObjectDistributor, modelWalkingSynchronizer, propertyChangeNotifier);
 
-        final PropertyChangeNotificationDisabler propertyChangeNotifier = new JfxPropertyChangeNotifier(
-                propertyChangeDistributor, creator);
-
+        final SilentObservableChanger silentObservableChanger = new SilentObservableChanger(modelChangeExecutor);
         final SetPropertyValueExecutor setPropertyValueExecutor = new SetPropertyValueExecutor(propertyRegistry,
-                propertyValueMapper, propertyChangeNotifier, modelChangeExecutor, topology);
-        this.listeners = new Listeners(this, creator, topology, modelWalkingSynchronizer, propertyChangeDistributor,
-                propertyChangeNotifier);
+                propertyValueMapper, silentObservableChanger, topology);
+        this.listeners = new Listeners(this, creator, topology, modelWalkingSynchronizer, propertyChangeNotifier);
         this.executor = new CommandListExecutor(this, listeners, topology, setPropertyValueExecutor);
+        
         observableObjectDistributor.setListeners(listeners);
+        commandDistributor.setCommandListCreator(creator);
+        observableObjectDistributor.setCreator(creator);
+        propertyChangeNotifier.setCreator(creator);
+        propertyChangeNotifier.setPropertyChangeDistributor(propertyChangeDistributor);
     }
 
     /**
