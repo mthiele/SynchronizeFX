@@ -44,6 +44,7 @@ import de.saxsys.synchronizefx.core.metamodel.commands.RemoveFromSet;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetPropertyValue;
 import de.saxsys.synchronizefx.core.metamodel.commands.SetRootElement;
 import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.SetPropertyValueExecutor;
+import de.saxsys.synchronizefx.core.metamodel.setsynchronizer.AddToSetExecutor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,10 +59,10 @@ public class CommandListExecutor {
 
     private final MetaModel parent;
     private final Listeners listeners;
-    
-    
+
     private final SetPropertyValueExecutor setPropertyValueExecutor;
-    
+    private final AddToSetExecutor addToSetExecutor;
+
     /**
      * A set that holds hard references to objects that would otherwise only have weak references and thus could get
      * garbage collected before they are used.
@@ -72,21 +73,24 @@ public class CommandListExecutor {
 
     private final TopologyLayerCallback topology;
 
-
     /**
      * Initializes the executor.
      * 
-     * @param parent The model to user for id lookup and registration.
-     * @param listeners The listeners that should be registered on new properties.
-     * @param topology The user callback that should be used to report errors.
+     * @param parent
+     *            The model to user for id lookup and registration.
+     * @param listeners
+     *            The listeners that should be registered on new properties.
+     * @param topology
+     *            The user callback that should be used to report errors.
      */
-    public CommandListExecutor(final MetaModel parent, final Listeners listeners,
-            final TopologyLayerCallback topology, final SetPropertyValueExecutor setPropertyValueExecutor) {
+    public CommandListExecutor(final MetaModel parent, final Listeners listeners, final TopologyLayerCallback topology,
+            final SetPropertyValueExecutor setPropertyValueExecutor, final AddToSetExecutor addToSetExecutor) {
         this.topology = topology;
         this.parent = parent;
         this.listeners = listeners;
         this.setPropertyValueExecutor = setPropertyValueExecutor;
-        
+        this.addToSetExecutor = addToSetExecutor;
+
         if (LOG.isTraceEnabled()) {
             propFieldMap = new HashMap<>();
         }
@@ -94,7 +98,8 @@ public class CommandListExecutor {
 
     /**
      * @see MetaModel#execute(Object)
-     * @param command The command to execute.
+     * @param command
+     *            The command to execute.
      */
     public void execute(final Object command) {
         if (command instanceof CreateObservableObject) {
@@ -110,7 +115,7 @@ public class CommandListExecutor {
         } else if (command instanceof RemoveFromMap) {
             execute((RemoveFromMap) command);
         } else if (command instanceof AddToSet) {
-            execute((AddToSet) command);
+            addToSetExecutor.execute((AddToSet) command);
         } else if (command instanceof RemoveFromSet) {
             execute((RemoveFromSet) command);
         } else if (command instanceof ClearReferences) {
@@ -209,7 +214,7 @@ public class CommandListExecutor {
                 listeners.disableFor(list);
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("Add value {} to list {} at position {}.",
-                            new Object[] {value, Arrays.toString(list.toArray()), command.getPosition() });
+                            new Object[] { value, Arrays.toString(list.toArray()), command.getPosition() });
                 }
                 if (list.size() >= command.getNewSize()) {
                     LOG.warn("Preconditions to apply AddToList command are not met. This may be OK if you've just connected.");
@@ -323,9 +328,8 @@ public class CommandListExecutor {
     private void execute(final RemoveFromMap command) {
         @SuppressWarnings("unchecked")
         final Map<Object, Object> map = (Map<Object, Object>) parent.getById(command.getMapId());
-        final Object key =
-                command.getKeySimpleObjectValue() != null ? command.getKeySimpleObjectValue() : parent.getById(command
-                        .getKeyObservableObjectId());
+        final Object key = command.getKeySimpleObjectValue() != null ? command.getKeySimpleObjectValue() : parent
+                .getById(command.getKeyObservableObjectId());
         if (key == null) {
             topology.onError(new SynchronizeFXException("RemoveFromMap command with unknown key object id recived. "
                     + command.getKeySimpleObjectValue()));
@@ -345,49 +349,11 @@ public class CommandListExecutor {
         }
     }
 
-    private void execute(final AddToSet command) {
-        @SuppressWarnings("unchecked")
-        final Set<Object> set = (Set<Object>) parent.getById(command.getSetId());
-        if (set == null) {
-            topology.onError(new SynchronizeFXException("AddToSet command with unknown list id recived. "
-                    + command.getSetId()));
-            return;
-        }
-        final Object value;
-        final UUID valueId = command.getValue().getObservableObjectId();
-        if (valueId != null) {
-            value = parent.getById(valueId);
-            if (value == null) {
-                topology.onError(new SynchronizeFXException("AddToSet command unknown with value object id recived. "
-                        + command.getValue().getObservableObjectId()));
-                return;
-            }
-        } else {
-            value = command.getValue().getSimpleObjectValue();
-        }
-
-        // TODO catch index out of bounds exception.
-        final Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                listeners.disableFor(set);
-                set.add(value);
-                listeners.enableFor(set);
-            }
-        };
-        if (parent.isDoChangesInJavaFxThread()) {
-            Platform.runLater(runnable);
-        } else {
-            runnable.run();
-        }
-    }
-
     private void execute(final RemoveFromSet command) {
         @SuppressWarnings("unchecked")
         final Set<Object> set = (Set<Object>) parent.getById(command.getListId());
-        final Object value =
-                command.getSimpleObjectValue() != null ? command.getSimpleObjectValue() : parent.getById(command
-                        .getObservableObjectId());
+        final Object value = command.getSimpleObjectValue() != null ? command.getSimpleObjectValue() : parent
+                .getById(command.getObservableObjectId());
         if (value == null) {
             topology.onError(new SynchronizeFXException("RemoveFromSet command with unknown value object id recived. "
                     + command.getSimpleObjectValue()));

@@ -29,11 +29,13 @@ import de.saxsys.synchronizefx.core.metamodel.commands.SetRootElement;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedCommandDistributor;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedModelChangeExecutor;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedObservableObjectRegistry;
+import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedObservableSetRegistry;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModelBasedPropertyRegistry;
 import de.saxsys.synchronizefx.core.metamodel.glue.MetaModleBasedObservableObjectDistributor;
 import de.saxsys.synchronizefx.core.metamodel.javafx.JfxPropertyChangeNotifier;
 import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.PropertyChangeDistributor;
 import de.saxsys.synchronizefx.core.metamodel.propertysynchronizer.SetPropertyValueExecutor;
+import de.saxsys.synchronizefx.core.metamodel.setsynchronizer.AddToSetExecutor;
 
 import org.apache.commons.collections.map.AbstractReferenceMap;
 import org.apache.commons.collections.map.ReferenceIdentityMap;
@@ -73,7 +75,7 @@ public class MetaModel {
         this.topology = topology;
 
         this.modelWalkingSynchronizer = new ModelWalkingSynchronizer();
-        
+
         final ObservableObjectRegistry observableObjectRegistry = new MetaModelBasedObservableObjectRegistry(this);
         final ModelChangeExecutor modelChangeExecutor = new MetaModelBasedModelChangeExecutor(this);
         final MetaModelBasedCommandDistributor commandDistributor = new MetaModelBasedCommandDistributor(topology);
@@ -83,22 +85,28 @@ public class MetaModel {
         final PushBasedBasedObservedValueMapper propertyValueMapper = new PushBasedBasedObservedValueMapper(
                 observableObjectRegistry, topology, observableObjectDistributor);
 
-
         final JfxPropertyChangeNotifier propertyChangeNotifier = new JfxPropertyChangeNotifier();
         final PropertyRegistry propertyRegistry = new MetaModelBasedPropertyRegistry(this, propertyChangeNotifier);
-        
+
         final PropertyChangeDistributor propertyChangeDistributor = new PropertyChangeDistributor(propertyValueMapper,
                 propertyRegistry, commandDistributor, topology);
 
         this.creator = new CommandListCreator(this, topology, propertyChangeDistributor, commandDistributor,
                 observableObjectDistributor, modelWalkingSynchronizer, propertyChangeNotifier);
 
+        this.listeners = new Listeners(this, creator, topology, modelWalkingSynchronizer, propertyChangeNotifier);
+
+        final ObservableSetRegistry observableSetRegistry = new MetaModelBasedObservableSetRegistry(this, listeners);
+
         final SilentObservableChanger silentObservableChanger = new SilentObservableChanger(modelChangeExecutor);
         final SetPropertyValueExecutor setPropertyValueExecutor = new SetPropertyValueExecutor(propertyRegistry,
                 propertyValueMapper, silentObservableChanger, topology);
-        this.listeners = new Listeners(this, creator, topology, modelWalkingSynchronizer, propertyChangeNotifier);
-        this.executor = new CommandListExecutor(this, listeners, topology, setPropertyValueExecutor);
-        
+        final AddToSetExecutor addToSetExecutor = new AddToSetExecutor(observableSetRegistry, propertyValueMapper,
+                silentObservableChanger, topology);
+
+        this.executor = new CommandListExecutor(this, listeners, topology, setPropertyValueExecutor, addToSetExecutor);
+
+        // temporary hacks to allow cyclic dependencies while refactoring is in progress
         observableObjectDistributor.setListeners(listeners);
         commandDistributor.setCommandListCreator(creator);
         observableObjectDistributor.setCreator(creator);
@@ -283,14 +291,14 @@ public class MetaModel {
      * 
      * <p>
      * This method is intended to be used by tests only.
-     * </p> 
+     * </p>
      * 
      * @return The synchronizer
      */
     ModelWalkingSynchronizer getModelWalkingSynchronizer() {
         return modelWalkingSynchronizer;
     }
-    
+
     /**
      * Execute a single command to change the domain model of the user.
      * 
